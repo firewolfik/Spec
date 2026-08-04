@@ -2,7 +2,7 @@ name: Spec
 description: Hidden spectator mode for moderators
 version: '1.0.0'
 main: xd.firewolfik.spec.Main
-api-version: '1.21'
+api-version: '${plugin.api-version}'
 load: POSTWORLD
 authors: [firewolfik]
 commands:

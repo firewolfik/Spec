@@ -1,6 +1,7 @@
 package xd.firewolfik.spec.command;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import org.bukkit.Bukkit;
@@ -8,18 +9,17 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
-import org.jetbrains.annotations.NotNull;
 
 public final class SpecTabCompleter implements TabCompleter {
     @Override
-    public @NotNull List<String> onTabComplete(
-            @NotNull CommandSender sender,
-            @NotNull Command command,
-            @NotNull String alias,
-            @NotNull String[] args
+    public List<String> onTabComplete(
+            CommandSender sender,
+            Command command,
+            String alias,
+            String[] args
     ) {
         if (args.length != 1 || args[0].isEmpty() || !sender.hasPermission("spec.use")) {
-            return List.of();
+            return Collections.emptyList();
         }
 
         String prefix = args[0].toLowerCase(Locale.ROOT);

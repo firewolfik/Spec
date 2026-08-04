@@ -4,20 +4,60 @@ import java.util.UUID;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
 
-public record SpecSession(
-        UUID moderatorId,
-        UUID targetId,
-        String worldName,
-        double x,
-        double y,
-        double z,
-        float yaw,
-        float pitch,
-        GameMode gameMode,
-        boolean allowFlight,
-        boolean flying,
-        long startedAt
-) {
+public final class SpecSession {
+    private final UUID moderatorId;
+    private final UUID targetId;
+    private final String worldName;
+    private final double x;
+    private final double y;
+    private final double z;
+    private final float yaw;
+    private final float pitch;
+    private final GameMode gameMode;
+    private final boolean allowFlight;
+    private final boolean flying;
+    private final long startedAt;
+
+    public SpecSession(
+            UUID moderatorId,
+            UUID targetId,
+            String worldName,
+            double x,
+            double y,
+            double z,
+            float yaw,
+            float pitch,
+            GameMode gameMode,
+            boolean allowFlight,
+            boolean flying,
+            long startedAt
+    ) {
+        this.moderatorId = moderatorId;
+        this.targetId = targetId;
+        this.worldName = worldName;
+        this.x = x;
+        this.y = y;
+        this.z = z;
+        this.yaw = yaw;
+        this.pitch = pitch;
+        this.gameMode = gameMode;
+        this.allowFlight = allowFlight;
+        this.flying = flying;
+        this.startedAt = startedAt;
+    }
+
+    public UUID moderatorId() { return moderatorId; }
+    public UUID targetId() { return targetId; }
+    public String worldName() { return worldName; }
+    public double x() { return x; }
+    public double y() { return y; }
+    public double z() { return z; }
+    public float yaw() { return yaw; }
+    public float pitch() { return pitch; }
+    public GameMode gameMode() { return gameMode; }
+    public boolean allowFlight() { return allowFlight; }
+    public boolean flying() { return flying; }
+    public long startedAt() { return startedAt; }
     public static SpecSession capture(UUID targetId, org.bukkit.entity.Player moderator) {
         Location location = moderator.getLocation();
         return new SpecSession(

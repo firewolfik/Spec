@@ -13,10 +13,17 @@
 
     <properties>
         <java.version>21</java.version>
+        <minecraft.version>1.21.11</minecraft.version>
+        <plugin.api-version>1.21</plugin.api-version>
+        <server.api.groupId>io.papermc.paper</server.api.groupId>
+        <server.api.artifactId>paper-api</server.api.artifactId>
+        <server.api.version>1.21.11-R0.1-SNAPSHOT</server.api.version>
+        <slf4j.version>2.0.16</slf4j.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
     <build>
+        <finalName>${project.artifactId}-${minecraft.version}</finalName>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -26,11 +33,47 @@
                     <release>${java.version}</release>
                 </configuration>
             </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>3.6.1</version>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                        <configuration>
+                            <createDependencyReducedPom>false</createDependencyReducedPom>
+                            <filters>
+                                <filter>
+                                    <artifact>*:*</artifact>
+                                    <excludes>
+                                        <exclude>META-INF/*.SF</exclude>
+                                        <exclude>META-INF/*.DSA</exclude>
+                                        <exclude>META-INF/*.RSA</exclude>
+                                    </excludes>
+                                </filter>
+                            </filters>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
         <resources>
             <resource>
                 <directory>src/main/resources</directory>
+                <excludes>
+                    <exclude>plugin.yml</exclude>
+                </excludes>
                 <filtering>false</filtering>
+            </resource>
+            <resource>
+                <directory>src/main/resources</directory>
+                <includes>
+                    <include>plugin.yml</include>
+                </includes>
+                <filtering>true</filtering>
             </resource>
         </resources>
     </build>
@@ -40,14 +83,44 @@
             <id>papermc-repo</id>
             <url>https://repo.papermc.io/repository/maven-public/</url>
         </repository>
+        <repository>
+            <id>spigotmc-repo</id>
+            <url>https://hub.spigotmc.org/nexus/content/repositories/snapshots/</url>
+        </repository>
     </repositories>
 
     <dependencies>
         <dependency>
-            <groupId>io.papermc.paper</groupId>
-            <artifactId>paper-api</artifactId>
-            <version>1.21.11-R0.1-SNAPSHOT</version>
+            <groupId>${server.api.groupId}</groupId>
+            <artifactId>${server.api.artifactId}</artifactId>
+            <version>${server.api.version}</version>
             <scope>provided</scope>
         </dependency>
+        <dependency>
+            <groupId>org.xerial</groupId>
+            <artifactId>sqlite-jdbc</artifactId>
+            <version>3.46.1.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-nop</artifactId>
+            <version>${slf4j.version}</version>
+            <scope>runtime</scope>
+        </dependency>
     </dependencies>
+
+    <profiles>
+        <profile>
+            <id>mc-1.16.5</id>
+            <properties>
+                <java.version>8</java.version>
+                <minecraft.version>1.16.5</minecraft.version>
+                <plugin.api-version>1.16</plugin.api-version>
+                <server.api.groupId>org.spigotmc</server.api.groupId>
+                <server.api.artifactId>spigot-api</server.api.artifactId>
+                <server.api.version>1.16.5-R0.1-SNAPSHOT</server.api.version>
+                <slf4j.version>1.7.36</slf4j.version>
+            </properties>
+        </profile>
+    </profiles>
 </project>

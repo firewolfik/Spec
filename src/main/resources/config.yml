@@ -2,7 +2,31 @@ prefix: "&eSpec &8» "
 
 action-bar:
   enabled: true
-  message: "&6⚡&fВы находитесь в режиме &eневидимости&f."
+  message: "&6⚡ &fВы находитесь в режиме &eневидимости&f."
+
+# Названия звуков должны существовать в вашей версии Minecraft.
+sounds:
+  enabled: true
+  start:
+    name: ENTITY_EXPERIENCE_ORB_PICKUP
+    volume: 0.3
+    pitch: 1.0
+  teleport:
+    name: ENTITY_ENDERMAN_TELEPORT
+    volume: 0.3
+    pitch: 1.0
+  stop:
+    name: ENTITY_PLAYER_SMALL_FALL
+    volume: 0.3
+    pitch: 1.0
+  error:
+    name: ENTITY_VILLAGER_NO
+    volume: 0.3
+    pitch: 1.0
+  reload:
+    name: ENTITY_EXPERIENCE_ORB_PICKUP
+    volume: 0.2
+    pitch: 1.0
 
 messages:
   no-permission: "&c☠ &fУ вас нет прав"

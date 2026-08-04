@@ -14,7 +14,7 @@
 
 ## ⚙️ Конфигурация
 
-Сообщения, HEX-цвета и Action Bar настраиваются в [`config.yml`](https://github.com/firewolfik/Spec/blob/main/src/main/resources/config.yml).
+Сообщения, HEX-цвета, Action Bar и звуки настраиваются в [`config.yml`](https://github.com/firewolfik/Spec/blob/main/src/main/resources/config.yml).
 
 ## ⭐ Возможности
 
@@ -25,6 +25,8 @@
 - Защита от урона, эффектов, огня, голода и отбрасывания.
 - Восстановление состояния после выхода или перезапуска сервера.
 - Настраиваемый Action Bar.
+- Настраиваемые звуки действий.
+- Хранение активных сессий в SQLite (`plugins/Spec/sessions.db`).
 
 ## 🔧 Команды и права
 
@@ -46,9 +48,9 @@
 
 ## 📦 Установка
 
-1. Соберите проект командой `mvn clean package`.
-2. Переместите JAR из папки `target` в папку `plugins` сервера.
-3. Запустите Paper 1.21.11 на Java 21.
+1. Для Paper 1.21.11 соберите проект командой `mvn clean package` (Java 21).
+2. Для Spigot/Paper 1.16.5 используйте `mvn clean package -Pmc-1.16.5` (Java 8+).
+3. Переместите соответствующий `spec-1.21.11.jar` или `spec-1.16.5.jar` из папки `target` в папку `plugins` сервера.
 
 ## 📞 Поддержка
 

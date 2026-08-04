@@ -1,5 +1,6 @@
 package xd.firewolfik.spec.message;
 
+import java.util.Collections;
 import java.util.Map;
 import org.bukkit.command.CommandSender;
 import xd.firewolfik.spec.config.ConfigService;
@@ -13,7 +14,7 @@ public final class MessageService {
     }
 
     public void send(CommandSender recipient, String path) {
-        send(recipient, path, Map.of());
+        send(recipient, path, Collections.<String, String>emptyMap());
     }
 
     public void send(CommandSender recipient, String path, Map<String, String> placeholders) {

@@ -13,6 +13,7 @@ import xd.firewolfik.spec.repository.SessionRepository;
 import xd.firewolfik.spec.service.ActionBarService;
 import xd.firewolfik.spec.service.PlayerStateService;
 import xd.firewolfik.spec.service.SpectatorService;
+import xd.firewolfik.spec.service.SoundService;
 import xd.firewolfik.spec.service.VisibilityService;
 
 public final class Main extends JavaPlugin {
@@ -28,15 +29,17 @@ public final class Main extends JavaPlugin {
         sessions.load();
         VisibilityService visibility = new VisibilityService(this, sessions);
         ActionBarService actionBar = new ActionBarService(this, config, sessions);
+        SoundService sounds = new SoundService(this, config);
         spectatorService = new SpectatorService(
                 sessions,
                 new PlayerStateService(this),
                 visibility,
                 actionBar,
-                messages
+                messages,
+                sounds
         );
 
-        SpecCommand specCommand = new SpecCommand(this, config, messages, spectatorService, actionBar);
+        SpecCommand specCommand = new SpecCommand(this, config, messages, spectatorService, actionBar, sounds);
         Objects.requireNonNull(getCommand("spec"), "Command spec is missing from plugin.yml")
                 .setExecutor(specCommand);
         Objects.requireNonNull(getCommand("spec")).setTabCompleter(new SpecTabCompleter());

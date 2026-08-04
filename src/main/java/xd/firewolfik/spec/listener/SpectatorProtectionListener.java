@@ -6,7 +6,6 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityCombustEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
-import org.bukkit.event.entity.EntityKnockbackEvent;
 import org.bukkit.event.entity.EntityPotionEffectEvent;
 import org.bukkit.event.entity.EntityTargetLivingEntityEvent;
 import org.bukkit.event.entity.FoodLevelChangeEvent;
@@ -55,14 +54,6 @@ public final class SpectatorProtectionListener implements Listener {
         }
     }
 
-    @SuppressWarnings("removal")
-    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
-    public void onKnockback(EntityKnockbackEvent event) {
-        if (isProtected(event.getEntity())) {
-            event.setCancelled(true);
-        }
-    }
-
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onVelocity(PlayerVelocityEvent event) {
         if (sessions.contains(event.getPlayer().getUniqueId())) {
@@ -71,6 +62,6 @@ public final class SpectatorProtectionListener implements Listener {
     }
 
     private boolean isProtected(org.bukkit.entity.Entity entity) {
-        return entity instanceof Player player && sessions.contains(player.getUniqueId());
+        return entity instanceof Player && sessions.contains(entity.getUniqueId());
     }
 }

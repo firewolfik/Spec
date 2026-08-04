@@ -1,5 +1,7 @@
 package xd.firewolfik.spec.service;
 
+import net.md_5.bungee.api.ChatMessageType;
+import net.md_5.bungee.api.chat.TextComponent;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitTask;
@@ -45,7 +47,10 @@ public final class ActionBarService {
         for (SpecSession session : sessions.getAll()) {
             Player moderator = Bukkit.getPlayer(session.moderatorId());
             if (moderator != null && moderator.isOnline()) {
-                moderator.sendActionBar(config.getActionBar());
+                moderator.spigot().sendMessage(
+                        ChatMessageType.ACTION_BAR,
+                        TextComponent.fromLegacyText(config.getActionBar())
+                );
             }
         }
     }

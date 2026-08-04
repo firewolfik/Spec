@@ -1,6 +1,5 @@
 package xd.firewolfik.spec.config;
 
-import net.kyori.adventure.text.Component;
 import xd.firewolfik.spec.Main;
 import xd.firewolfik.spec.util.ColorUtil;
 
@@ -19,11 +18,19 @@ public final class ConfigService {
         return plugin.getConfig().getString(path, "");
     }
 
-    public boolean isActionBarEnabled() {
-        return plugin.getConfig().getBoolean("action-bar.enabled", true);
+    public boolean getBoolean(String path, boolean defaultValue) {
+        return plugin.getConfig().getBoolean(path, defaultValue);
     }
 
-    public Component getActionBar() {
+    public double getDouble(String path, double defaultValue) {
+        return plugin.getConfig().getDouble(path, defaultValue);
+    }
+
+    public boolean isActionBarEnabled() {
+        return getBoolean("action-bar.enabled", true);
+    }
+
+    public String getActionBar() {
         return ColorUtil.colorize(getString("action-bar.message"));
     }
 }

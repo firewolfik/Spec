@@ -1,11 +1,10 @@
 package xd.firewolfik.spec.manager;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import org.jetbrains.annotations.Nullable;
 import xd.firewolfik.spec.model.SpecSession;
 import xd.firewolfik.spec.repository.SessionRepository;
 
@@ -26,12 +25,12 @@ public final class SpecSessionManager {
         return sessions.containsKey(moderatorId);
     }
 
-    public @Nullable SpecSession get(UUID moderatorId) {
+    public SpecSession get(UUID moderatorId) {
         return sessions.get(moderatorId);
     }
 
     public Collection<SpecSession> getAll() {
-        return List.copyOf(sessions.values());
+        return new ArrayList<>(sessions.values());
     }
 
     public void put(SpecSession session) {
@@ -39,7 +38,7 @@ public final class SpecSessionManager {
         save();
     }
 
-    public @Nullable SpecSession remove(UUID moderatorId) {
+    public SpecSession remove(UUID moderatorId) {
         SpecSession removed = sessions.remove(moderatorId);
         if (removed != null) {
             save();

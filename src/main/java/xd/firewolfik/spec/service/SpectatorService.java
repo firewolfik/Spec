@@ -1,7 +1,7 @@
 package xd.firewolfik.spec.service;
 
 import java.util.ArrayList;
-import java.util.Map;
+import java.util.Collections;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.entity.Player;
@@ -15,19 +15,22 @@ public final class SpectatorService {
     private final VisibilityService visibility;
     private final ActionBarService actionBar;
     private final MessageService messages;
+    private final SoundService sounds;
 
     public SpectatorService(
             SpecSessionManager sessions,
             PlayerStateService playerState,
             VisibilityService visibility,
             ActionBarService actionBar,
-            MessageService messages
+            MessageService messages,
+            SoundService sounds
     ) {
         this.sessions = sessions;
         this.playerState = playerState;
         this.visibility = visibility;
         this.actionBar = actionBar;
         this.messages = messages;
+        this.sounds = sounds;
     }
 
     public SpectatorResult observe(Player moderator, Player target) {
@@ -37,10 +40,12 @@ public final class SpectatorService {
                 return SpectatorResult.TELEPORT_FAILED;
             }
             if (current.targetId().equals(target.getUniqueId())) {
+                sounds.play(moderator, "teleport");
                 return SpectatorResult.RETELEPORTED;
             }
 
             sessions.put(current.withTarget(target.getUniqueId()));
+            sounds.play(moderator, "teleport");
             return SpectatorResult.SWITCHED;
         }
 
@@ -57,6 +62,7 @@ public final class SpectatorService {
 
         visibility.hideModerator(moderator);
         actionBar.refresh();
+        sounds.play(moderator, "start");
         return SpectatorResult.STARTED;
     }
 
@@ -78,6 +84,7 @@ public final class SpectatorService {
         }
         if (sendMessage) {
             messages.send(moderator, "messages.spec-stopped");
+            sounds.play(moderator, "stop");
         }
         return true;
     }
@@ -95,7 +102,7 @@ public final class SpectatorService {
             }
             Player moderator = Bukkit.getPlayer(session.moderatorId());
             if (moderator != null && moderator.isOnline()) {
-                messages.send(moderator, "messages.target-left", Map.of("player", target.getName()));
+                messages.send(moderator, "messages.target-left", Collections.singletonMap("player", target.getName()));
             }
         }
     }
