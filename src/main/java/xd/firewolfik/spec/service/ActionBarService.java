@@ -1,0 +1,52 @@
+package xd.firewolfik.spec.service;
+
+import org.bukkit.Bukkit;
+import org.bukkit.entity.Player;
+import org.bukkit.scheduler.BukkitTask;
+import xd.firewolfik.spec.Main;
+import xd.firewolfik.spec.config.ConfigService;
+import xd.firewolfik.spec.manager.SpecSessionManager;
+import xd.firewolfik.spec.model.SpecSession;
+
+public final class ActionBarService {
+    private final Main plugin;
+    private final ConfigService config;
+    private final SpecSessionManager sessions;
+    private BukkitTask task;
+
+    public ActionBarService(Main plugin, ConfigService config, SpecSessionManager sessions) {
+        this.plugin = plugin;
+        this.config = config;
+        this.sessions = sessions;
+    }
+
+    public void refresh() {
+        if (!config.isActionBarEnabled() || sessions.getAll().isEmpty()) {
+            stop();
+            return;
+        }
+        if (task == null) {
+            task = Bukkit.getScheduler().runTaskTimer(plugin, this::send, 0L, 20L);
+        }
+    }
+
+    public void stop() {
+        if (task != null) {
+            task.cancel();
+            task = null;
+        }
+    }
+
+    private void send() {
+        if (!config.isActionBarEnabled()) {
+            stop();
+            return;
+        }
+        for (SpecSession session : sessions.getAll()) {
+            Player moderator = Bukkit.getPlayer(session.moderatorId());
+            if (moderator != null && moderator.isOnline()) {
+                moderator.sendActionBar(config.getActionBar());
+            }
+        }
+    }
+}

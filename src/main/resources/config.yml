@@ -1,0 +1,21 @@
+prefix: "&eSpec &8» "
+
+action-bar:
+  enabled: true
+  message: "&6⚡&fВы находитесь в режиме &eневидимости&f."
+
+messages:
+  no-permission: "&c☠ &fУ вас нет прав"
+  player-only: "бля иди нахуй"
+  usage: "&eℹ &fИспользуйте: /spec (игрок)"
+  player-not-found: "&c☠ &fИгрок не найден"
+  cannot-spec-yourself: "&c☠ &fНельзя наблюдать за самим собой"
+  already-spectating: "&c✘ &fВы уже находитесь в режиме наблюдения"
+  spec-started: "&e⚡ &fВы начали наблюдение за &e%player%"
+  spec-teleported: "&e⚡ &fТелепортация к &e%player%"
+  spec-stopped: "&e⭐ &fВы завершили наблюдение"
+  target-left: "&eℹ &fИгрок &e%player% &fну как бы &cвышел &fс сервера"
+  teleport-failed: "&c☠ &fНе удалось телепортироваться к игроку"
+  restored-after-restart: "&e⚡ &fСлежка завершена, из-за &eрестарта"
+  reload-success: "&e⭐ &fКонфигурация перезагружена"
+  reload-error: "&c☠ &fНе удалось перезагрузить конфигурацию"
