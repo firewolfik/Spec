@@ -4,6 +4,7 @@ version: '1.0.0'
 main: xd.firewolfik.spec.Main
 api-version: '${plugin.api-version}'
 load: POSTWORLD
+softdepend: [Essentials]
 authors: [firewolfik]
 commands:
   spec:
@@ -16,6 +17,4 @@ permissions:
   spec.reload:
     description: Allows reloading the configuration
     default: op
-  spec.see:
-    description: Allows seeing moderators in spectator mode
-    default: op
+

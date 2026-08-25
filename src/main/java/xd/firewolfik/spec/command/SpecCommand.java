@@ -7,6 +7,7 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+import org.jspecify.annotations.NonNull;
 import xd.firewolfik.spec.Main;
 import xd.firewolfik.spec.config.ConfigService;
 import xd.firewolfik.spec.message.MessageService;
@@ -14,6 +15,7 @@ import xd.firewolfik.spec.service.ActionBarService;
 import xd.firewolfik.spec.service.SpectatorResult;
 import xd.firewolfik.spec.service.SpectatorService;
 import xd.firewolfik.spec.service.SoundService;
+import xd.firewolfik.spec.service.VisibilityService;
 
 public final class SpecCommand implements CommandExecutor {
     private final Main plugin;
@@ -22,6 +24,7 @@ public final class SpecCommand implements CommandExecutor {
     private final SpectatorService spectators;
     private final ActionBarService actionBar;
     private final SoundService sounds;
+    private final VisibilityService visibility;
 
     public SpecCommand(
             Main plugin,
@@ -29,7 +32,8 @@ public final class SpecCommand implements CommandExecutor {
             MessageService messages,
             SpectatorService spectators,
             ActionBarService actionBar,
-            SoundService sounds
+            SoundService sounds,
+            VisibilityService visibility
     ) {
         this.plugin = plugin;
         this.config = config;
@@ -37,13 +41,14 @@ public final class SpecCommand implements CommandExecutor {
         this.spectators = spectators;
         this.actionBar = actionBar;
         this.sounds = sounds;
+        this.visibility = visibility;
     }
 
     @Override
     public boolean onCommand(
-            CommandSender sender,
-            Command command,
-            String label,
+            @NonNull CommandSender sender,
+            @NonNull Command command,
+            @NonNull String label,
             String[] args
     ) {
         if (args.length == 1 && args[0].equalsIgnoreCase("reload")) {
@@ -103,6 +108,7 @@ public final class SpecCommand implements CommandExecutor {
             config.reload();
             sounds.reload();
             actionBar.refresh();
+            visibility.refreshActiveSessions();
             messages.send(sender, "messages.reload-success");
             if (sender instanceof Player) {
                 sounds.play((Player) sender, "reload");

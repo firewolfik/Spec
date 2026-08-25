@@ -1,6 +1,7 @@
 package xd.firewolfik.spec.config;
 
 import xd.firewolfik.spec.Main;
+import xd.firewolfik.spec.service.VisibilityMode;
 import xd.firewolfik.spec.util.ColorUtil;
 
 public final class ConfigService {
@@ -20,6 +21,11 @@ public final class ConfigService {
 
     public boolean getBoolean(String path, boolean defaultValue) {
         return plugin.getConfig().getBoolean(path, defaultValue);
+    }
+
+    public VisibilityMode getVisibilityMode() {
+        String raw = plugin.getConfig().getString("visibility.mode", "");
+        return VisibilityMode.fromConfig(raw);
     }
 
     public double getDouble(String path, double defaultValue) {

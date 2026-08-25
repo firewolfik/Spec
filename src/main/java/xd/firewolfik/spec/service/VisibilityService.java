@@ -3,47 +3,76 @@ package xd.firewolfik.spec.service;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import xd.firewolfik.spec.Main;
+import xd.firewolfik.spec.config.ConfigService;
 import xd.firewolfik.spec.manager.SpecSessionManager;
 import xd.firewolfik.spec.model.SpecSession;
 
 public final class VisibilityService {
     private final Main plugin;
     private final SpecSessionManager sessions;
+    private final ConfigService config;
+    private final GamemodeMaskService masks;
+    private final VanishService vanish;
 
-    public VisibilityService(Main plugin, SpecSessionManager sessions) {
+    public VisibilityService(
+            Main plugin,
+            SpecSessionManager sessions,
+            ConfigService config,
+            GamemodeMaskService masks,
+            VanishService vanish
+    ) {
         this.plugin = plugin;
         this.sessions = sessions;
+        this.config = config;
+        this.masks = masks;
+        this.vanish = vanish;
     }
 
     public void hideModerator(Player moderator) {
+        if (config.getVisibilityMode() == VisibilityMode.VANISH) {
+            vanish.vanish(moderator);
+            return;
+        }
+        vanish.unvanish(moderator);
         for (Player viewer : Bukkit.getOnlinePlayers()) {
-            update(viewer, moderator, true);
+            if (viewer.equals(moderator)) {
+                continue;
+            }
+            viewer.showPlayer(plugin, moderator);
+            masks.mask(viewer, moderator);
         }
     }
 
     public void showModerator(Player moderator) {
-        for (Player viewer : Bukkit.getOnlinePlayers()) {
-            update(viewer, moderator, false);
+        if (config.getVisibilityMode() == VisibilityMode.VANISH) {
+            vanish.unvanish(moderator);
+            return;
         }
-    }
-
-    public void applyForJoiningViewer(Player viewer) {
-        for (SpecSession session : sessions.getAll()) {
-            Player moderator = Bukkit.getPlayer(session.moderatorId());
-            if (moderator != null) {
-                update(viewer, moderator, true);
+        for (Player viewer : Bukkit.getOnlinePlayers()) {
+            if (!viewer.equals(moderator)) {
+                viewer.showPlayer(plugin, moderator);
             }
         }
     }
 
-    private void update(Player viewer, Player moderator, boolean hidden) {
-        if (viewer.equals(moderator)) {
+    public void applyForJoiningViewer(Player viewer) {
+        if (config.getVisibilityMode() != VisibilityMode.SILENT) {
             return;
         }
-        if (hidden && !viewer.hasPermission("spec.see")) {
-            viewer.hidePlayer(plugin, moderator);
-        } else {
-            viewer.showPlayer(plugin, moderator);
+        for (SpecSession session : sessions.getAll()) {
+            Player moderator = Bukkit.getPlayer(session.moderatorId());
+            if (moderator != null && !viewer.equals(moderator)) {
+                masks.mask(viewer, moderator);
+            }
+        }
+    }
+
+    public void refreshActiveSessions() {
+        for (SpecSession session : sessions.getAll()) {
+            Player moderator = Bukkit.getPlayer(session.moderatorId());
+            if (moderator != null && moderator.isOnline()) {
+                hideModerator(moderator);
+            }
         }
     }
 }

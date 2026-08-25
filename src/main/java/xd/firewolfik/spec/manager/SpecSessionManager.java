@@ -38,12 +38,11 @@ public final class SpecSessionManager {
         save();
     }
 
-    public SpecSession remove(UUID moderatorId) {
+    public void remove(UUID moderatorId) {
         SpecSession removed = sessions.remove(moderatorId);
         if (removed != null) {
             save();
         }
-        return removed;
     }
 
     public void save() {

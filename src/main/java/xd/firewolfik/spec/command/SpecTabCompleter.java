@@ -9,13 +9,14 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
+import org.jspecify.annotations.NonNull;
 
 public final class SpecTabCompleter implements TabCompleter {
     @Override
     public List<String> onTabComplete(
-            CommandSender sender,
-            Command command,
-            String alias,
+            @NonNull CommandSender sender,
+            @NonNull Command command,
+            @NonNull String alias,
             String[] args
     ) {
         if (args.length != 1 || args[0].isEmpty() || !sender.hasPermission("spec.use")) {
