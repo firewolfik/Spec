@@ -1,6 +1,6 @@
 name: Spec
 description: Hidden spectator mode for moderators
-version: '1.0.0'
+version: '1.1.0'
 main: xd.firewolfik.spec.Main
 api-version: '${plugin.api-version}'
 load: POSTWORLD
@@ -9,12 +9,14 @@ authors: [firewolfik]
 commands:
   spec:
     description: Start or stop hidden spectator mode
-    usage: /spec <player>|reload
+    usage: /spec <player>|alerts|reload
 permissions:
   spec.use:
-    description: Allows using spectator mode
+    description: Allows using spectator mode and receiving spectator alerts
+    default: op
+  spec.any:
+    description: Allows spectating any player directly without an active request
     default: op
   spec.reload:
     description: Allows reloading the configuration
     default: op
-

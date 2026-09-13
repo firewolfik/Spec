@@ -1,17 +1,22 @@
 package xd.firewolfik.spec.service;
 
+import com.earth2me.essentials.Essentials;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
-import com.earth2me.essentials.Essentials;
 import xd.firewolfik.spec.Main;
 
+/**
+ * Handles hiding and revealing players via EssentialsX Vanish integration,
+ * or falling back to standard Bukkit player hiding if Essentials is absent.
+ */
 public final class VanishService {
+
     private final Main plugin;
-    private final Set<UUID> vanishedByUs = new HashSet<UUID>();
+    private final Set<UUID> vanishedByUs = new HashSet<>();
     private Essentials essentials;
     private boolean warnedUnavailable;
 
@@ -21,18 +26,17 @@ public final class VanishService {
 
     public void vanish(Player moderator) {
         UUID id = moderator.getUniqueId();
-        if (vanishedByUs.contains(id)) {
+        if (vanishedByUs.contains(id) || isAlreadyVanished(moderator)) {
             return;
         }
-        if (isVanished(moderator)) {
-            return;
-        }
-        Essentials ess = resolve();
+
+        Essentials ess = resolveEssentials();
         if (ess == null) {
             hideFromEveryone(moderator);
         } else {
             ess.getUser(moderator).setVanished(true);
         }
+
         vanishedByUs.add(id);
     }
 
@@ -40,7 +44,8 @@ public final class VanishService {
         if (!vanishedByUs.remove(moderator.getUniqueId())) {
             return;
         }
-        Essentials ess = resolve();
+
+        Essentials ess = resolveEssentials();
         if (ess == null) {
             showToEveryone(moderator);
         } else {
@@ -48,25 +53,28 @@ public final class VanishService {
         }
     }
 
-    private Essentials resolve() {
+    private Essentials resolveEssentials() {
         if (essentials != null) {
             return essentials;
         }
+
         Plugin candidate = Bukkit.getPluginManager().getPlugin("Essentials");
         if (candidate instanceof Essentials && candidate.isEnabled()) {
             essentials = (Essentials) candidate;
             return essentials;
         }
+
         if (!warnedUnavailable) {
             warnedUnavailable = true;
             plugin.getLogger().warning(
-                    "Essentials not found: VANISH mode falls back to plain player hiding"
+                    "Essentials not found: VANISH mode falls back to plain Bukkit player hiding"
             );
         }
+
         return null;
     }
 
-    private static boolean isVanished(Player player) {
+    private static boolean isAlreadyVanished(Player player) {
         return player.hasMetadata("vanished")
                 && !player.getMetadata("vanished").isEmpty()
                 && player.getMetadata("vanished").get(0).asBoolean();

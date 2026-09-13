@@ -7,7 +7,12 @@ import org.bukkit.entity.Player;
 import xd.firewolfik.spec.Main;
 import xd.firewolfik.spec.model.SpecSession;
 
+/**
+ * Handles restoring player coordinates, gamemode, and flight capability
+ * to their pre-spectator values upon exiting spectator mode.
+ */
 public final class PlayerStateService {
+
     private final Main plugin;
 
     public PlayerStateService(Main plugin) {
@@ -15,14 +20,19 @@ public final class PlayerStateService {
     }
 
     public void restore(Player player, SpecSession session) {
-        if (!player.teleport(resolveLocation(session))) {
+        Location targetLocation = resolveLocation(session);
+        boolean teleported = player.teleport(targetLocation);
+
+        if (!teleported) {
             plugin.getLogger().warning("Could not restore location for " + player.getName());
         }
 
         player.setGameMode(session.gameMode());
+
         if (!session.allowFlight() && player.isFlying()) {
             player.setFlying(false);
         }
+
         player.setAllowFlight(session.allowFlight());
         player.setFlying(session.allowFlight() && session.flying());
     }
@@ -32,13 +42,15 @@ public final class PlayerStateService {
         if (world != null) {
             return new Location(world, session.x(), session.y(), session.z(), session.yaw(), session.pitch());
         }
+
         if (Bukkit.getWorlds().isEmpty()) {
             throw new IllegalStateException("No loaded world is available to restore a spectator");
         }
 
         World fallback = Bukkit.getWorlds().get(0);
-        plugin.getLogger().warning("World '" + session.worldName()
-                + "' is unavailable; using the spawn of '" + fallback.getName() + "'");
+        plugin.getLogger().warning(
+                "World '" + session.worldName() + "' is unavailable; using spawn of '" + fallback.getName() + "'"
+        );
         return fallback.getSpawnLocation();
     }
 }

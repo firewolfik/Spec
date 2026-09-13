@@ -1,5 +1,6 @@
 package xd.firewolfik.spec.listener;
 
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -12,7 +13,12 @@ import org.bukkit.event.entity.FoodLevelChangeEvent;
 import org.bukkit.event.player.PlayerVelocityEvent;
 import xd.firewolfik.spec.manager.SpecSessionManager;
 
+/**
+ * Protects spectating moderators from accidental world interactions:
+ * damage, mob targeting, fire, hunger, potion effects, and knockback velocity.
+ */
 public final class SpectatorProtectionListener implements Listener {
+
     private final SpecSessionManager sessions;
 
     public SpectatorProtectionListener(SpecSessionManager sessions) {
@@ -21,35 +27,35 @@ public final class SpectatorProtectionListener implements Listener {
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onDamage(EntityDamageEvent event) {
-        if (isProtected(event.getEntity())) {
+        if (isProtectedSpectator(event.getEntity())) {
             event.setCancelled(true);
         }
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onPotionEffect(EntityPotionEffectEvent event) {
-        if (event.getNewEffect() != null && isProtected(event.getEntity())) {
+        if (event.getNewEffect() != null && isProtectedSpectator(event.getEntity())) {
             event.setCancelled(true);
         }
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onCombust(EntityCombustEvent event) {
-        if (isProtected(event.getEntity())) {
+        if (isProtectedSpectator(event.getEntity())) {
             event.setCancelled(true);
         }
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onFoodLevelChange(FoodLevelChangeEvent event) {
-        if (isProtected(event.getEntity())) {
+        if (isProtectedSpectator(event.getEntity())) {
             event.setCancelled(true);
         }
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onTarget(EntityTargetLivingEntityEvent event) {
-        if (event.getTarget() != null && isProtected(event.getTarget())) {
+        if (event.getTarget() != null && isProtectedSpectator(event.getTarget())) {
             event.setCancelled(true);
         }
     }
@@ -61,7 +67,7 @@ public final class SpectatorProtectionListener implements Listener {
         }
     }
 
-    private boolean isProtected(org.bukkit.entity.Entity entity) {
+    private boolean isProtectedSpectator(Entity entity) {
         return entity instanceof Player && sessions.contains(entity.getUniqueId());
     }
 }

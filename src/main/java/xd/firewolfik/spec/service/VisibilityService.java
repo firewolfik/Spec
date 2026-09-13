@@ -7,7 +7,13 @@ import xd.firewolfik.spec.config.ConfigService;
 import xd.firewolfik.spec.manager.SpecSessionManager;
 import xd.firewolfik.spec.model.SpecSession;
 
+/**
+ * Coordinates player visibility logic according to the configured {@link VisibilityMode}:
+ * - VANISH: Hides player from the world and tab list via EssentialsX or Bukkit.
+ * - SILENT: Keeps player shown to everyone, but masks their gamemode as SURVIVAL in the tab list.
+ */
 public final class VisibilityService {
+
     private final Main plugin;
     private final SpecSessionManager sessions;
     private final ConfigService config;
@@ -33,6 +39,8 @@ public final class VisibilityService {
             vanish.vanish(moderator);
             return;
         }
+
+        // SILENT mode: ensure moderator is not vanished and masked as SURVIVAL in tab
         vanish.unvanish(moderator);
         for (Player viewer : Bukkit.getOnlinePlayers()) {
             if (viewer.equals(moderator)) {
@@ -48,6 +56,7 @@ public final class VisibilityService {
             vanish.unvanish(moderator);
             return;
         }
+
         for (Player viewer : Bukkit.getOnlinePlayers()) {
             if (!viewer.equals(moderator)) {
                 viewer.showPlayer(plugin, moderator);
@@ -59,6 +68,7 @@ public final class VisibilityService {
         if (config.getVisibilityMode() != VisibilityMode.SILENT) {
             return;
         }
+
         for (SpecSession session : sessions.getAll()) {
             Player moderator = Bukkit.getPlayer(session.moderatorId());
             if (moderator != null && !viewer.equals(moderator)) {

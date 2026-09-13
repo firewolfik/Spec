@@ -9,7 +9,9 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.logging.Level;
 import org.bukkit.GameMode;
@@ -18,16 +20,49 @@ import org.bukkit.configuration.file.YamlConfiguration;
 import xd.firewolfik.spec.Main;
 import xd.firewolfik.spec.model.SpecSession;
 
+/**
+ * Manages persistent storage of active moderator spectator sessions and user settings.
+ * Backed by SQLite (sessions.db) with automatic migration from legacy sessions.yml.
+ */
 public final class SessionRepository {
-    private static final String CREATE_SESSIONS = "CREATE TABLE IF NOT EXISTS sessions ("
-            + "moderator_id TEXT PRIMARY KEY, target_id TEXT NOT NULL, world_name TEXT NOT NULL, "
-            + "x REAL NOT NULL, y REAL NOT NULL, z REAL NOT NULL, yaw REAL NOT NULL, pitch REAL NOT NULL, "
-            + "game_mode TEXT NOT NULL, allow_flight INTEGER NOT NULL, flying INTEGER NOT NULL, "
-            + "started_at INTEGER NOT NULL)";
-    private static final String CREATE_METADATA = "CREATE TABLE IF NOT EXISTS metadata ("
-            + "key TEXT PRIMARY KEY, value TEXT NOT NULL)";
-    private static final String INSERT_SESSION = "INSERT INTO sessions (moderator_id, target_id, world_name, "
-            + "x, y, z, yaw, pitch, game_mode, allow_flight, flying, started_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
+    private static final String CREATE_SESSIONS_TABLE = ""
+            + "CREATE TABLE IF NOT EXISTS sessions ("
+            + "    moderator_id TEXT PRIMARY KEY,"
+            + "    target_id    TEXT NOT NULL,"
+            + "    world_name   TEXT NOT NULL,"
+            + "    x            REAL NOT NULL,"
+            + "    y            REAL NOT NULL,"
+            + "    z            REAL NOT NULL,"
+            + "    yaw          REAL NOT NULL,"
+            + "    pitch        REAL NOT NULL,"
+            + "    game_mode    TEXT NOT NULL,"
+            + "    allow_flight INTEGER NOT NULL,"
+            + "    flying       INTEGER NOT NULL,"
+            + "    started_at   INTEGER NOT NULL"
+            + ")";
+
+    private static final String CREATE_METADATA_TABLE = ""
+            + "CREATE TABLE IF NOT EXISTS metadata ("
+            + "    key   TEXT PRIMARY KEY,"
+            + "    value TEXT NOT NULL"
+            + ")";
+
+    private static final String CREATE_DISABLED_ALERTS_TABLE = ""
+            + "CREATE TABLE IF NOT EXISTS disabled_alerts ("
+            + "    moderator_id TEXT PRIMARY KEY"
+            + ")";
+
+    private static final String SELECT_ALL_SESSIONS = ""
+            + "SELECT moderator_id, target_id, world_name, x, y, z, yaw, pitch, "
+            + "       game_mode, allow_flight, flying, started_at "
+            + "FROM sessions";
+
+    private static final String INSERT_SESSION = ""
+            + "INSERT INTO sessions ("
+            + "    moderator_id, target_id, world_name, x, y, z, yaw, pitch, "
+            + "    game_mode, allow_flight, flying, started_at"
+            + ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
     private final Main plugin;
     private final File databaseFile;
@@ -38,43 +73,35 @@ public final class SessionRepository {
         this.databaseFile = new File(plugin.getDataFolder(), "sessions.db");
         this.legacyFile = new File(plugin.getDataFolder(), "sessions.yml");
 
-        try {
-            Class.forName("org.sqlite.JDBC");
-            initialize();
-        } catch (ClassNotFoundException exception) {
-            throw new IllegalStateException("SQLite JDBC driver is missing", exception);
-        } catch (SQLException exception) {
-            throw new IllegalStateException("Could not initialize sessions.db", exception);
-        }
+        ensureDriverLoaded();
+        initializeDatabase();
     }
 
     public Map<UUID, SpecSession> load() {
-        Map<UUID, SpecSession> sessions = loadDatabase();
+        Map<UUID, SpecSession> sessions = loadFromDatabase();
+
         if (legacyFile.isFile() && !isLegacyMigrationComplete()) {
-            Map<UUID, SpecSession> legacySessions = loadLegacy();
-            for (Map.Entry<UUID, SpecSession> entry : legacySessions.entrySet()) {
-                if (!sessions.containsKey(entry.getKey())) {
-                    sessions.put(entry.getKey(), entry.getValue());
-                }
-            }
-            save(sessions.values());
-            markLegacyMigrationComplete();
-            plugin.getLogger().info("Migrated " + legacySessions.size() + " session(s) from sessions.yml to SQLite");
+            migrateLegacySessions(sessions);
         }
+
         return sessions;
     }
 
     public void save(Collection<SpecSession> sessions) {
         try (Connection connection = openConnection()) {
             connection.setAutoCommit(false);
-            try (Statement delete = connection.createStatement();
-                 PreparedStatement insert = connection.prepareStatement(INSERT_SESSION)) {
-                delete.executeUpdate("DELETE FROM sessions");
+
+            try (Statement deleteStmt = connection.createStatement();
+                 PreparedStatement insertStmt = connection.prepareStatement(INSERT_SESSION)) {
+
+                deleteStmt.executeUpdate("DELETE FROM sessions");
+
                 for (SpecSession session : sessions) {
-                    bind(insert, session);
-                    insert.addBatch();
+                    bindSessionParameters(insertStmt, session);
+                    insertStmt.addBatch();
                 }
-                insert.executeBatch();
+
+                insertStmt.executeBatch();
                 connection.commit();
             } catch (SQLException exception) {
                 connection.rollback();
@@ -85,47 +112,121 @@ public final class SessionRepository {
         }
     }
 
-    private void initialize() throws SQLException {
-        try (Connection connection = openConnection(); Statement statement = connection.createStatement()) {
-            statement.executeUpdate(CREATE_SESSIONS);
-            statement.executeUpdate(CREATE_METADATA);
+    public Set<UUID> loadDisabledAlerts() {
+        Set<UUID> set = new HashSet<>();
+        String query = "SELECT moderator_id FROM disabled_alerts";
+        try (Connection connection = openConnection();
+             Statement statement = connection.createStatement();
+             ResultSet rs = statement.executeQuery(query)) {
+            while (rs.next()) {
+                set.add(UUID.fromString(rs.getString("moderator_id")));
+            }
+        } catch (SQLException | IllegalArgumentException exception) {
+            plugin.getLogger().log(Level.WARNING, "Could not load disabled alerts from SQLite", exception);
+        }
+        return set;
+    }
+
+    public void setAlertsDisabled(UUID moderatorId, boolean disabled) {
+        String sql = disabled
+                ? "INSERT OR IGNORE INTO disabled_alerts (moderator_id) VALUES (?)"
+                : "DELETE FROM disabled_alerts WHERE moderator_id = ?";
+
+        try (Connection connection = openConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, moderatorId.toString());
+            statement.executeUpdate();
+        } catch (SQLException exception) {
+            plugin.getLogger().log(Level.WARNING, "Could not update alert preference for " + moderatorId, exception);
         }
     }
 
-    private Map<UUID, SpecSession> loadDatabase() {
+    private void ensureDriverLoaded() {
+        try {
+            Class.forName("org.sqlite.JDBC");
+        } catch (ClassNotFoundException exception) {
+            throw new IllegalStateException("SQLite JDBC driver is missing from runtime classpath", exception);
+        }
+    }
+
+    private void initializeDatabase() {
+        try (Connection connection = openConnection();
+             Statement statement = connection.createStatement()) {
+            statement.executeUpdate(CREATE_SESSIONS_TABLE);
+            statement.executeUpdate(CREATE_METADATA_TABLE);
+            statement.executeUpdate(CREATE_DISABLED_ALERTS_TABLE);
+        } catch (SQLException exception) {
+            throw new IllegalStateException("Could not initialize SQLite schema in sessions.db", exception);
+        }
+    }
+
+    private Map<UUID, SpecSession> loadFromDatabase() {
         Map<UUID, SpecSession> sessions = new HashMap<>();
-        String query = "SELECT moderator_id, target_id, world_name, x, y, z, yaw, pitch, game_mode, "
-                + "allow_flight, flying, started_at FROM sessions";
+
         try (Connection connection = openConnection();
              Statement statement = connection.createStatement();
-             ResultSet result = statement.executeQuery(query)) {
-            while (result.next()) {
-                UUID moderatorId = UUID.fromString(result.getString("moderator_id"));
-                sessions.put(moderatorId, new SpecSession(
-                        moderatorId,
-                        UUID.fromString(result.getString("target_id")),
-                        result.getString("world_name"),
-                        result.getDouble("x"),
-                        result.getDouble("y"),
-                        result.getDouble("z"),
-                        result.getFloat("yaw"),
-                        result.getFloat("pitch"),
-                        GameMode.valueOf(result.getString("game_mode")),
-                        result.getInt("allow_flight") != 0,
-                        result.getInt("flying") != 0,
-                        result.getLong("started_at")
-                ));
+             ResultSet rs = statement.executeQuery(SELECT_ALL_SESSIONS)) {
+
+            while (rs.next()) {
+                SpecSession session = parseSessionRow(rs);
+                sessions.put(session.moderatorId(), session);
             }
         } catch (SQLException | IllegalArgumentException exception) {
             throw new IllegalStateException("Could not load sessions from SQLite", exception);
         }
+
         return sessions;
     }
 
-    private Map<UUID, SpecSession> loadLegacy() {
+    private SpecSession parseSessionRow(ResultSet rs) throws SQLException {
+        UUID moderatorId = UUID.fromString(rs.getString("moderator_id"));
+        UUID targetId = UUID.fromString(rs.getString("target_id"));
+        String worldName = rs.getString("world_name");
+        double x = rs.getDouble("x");
+        double y = rs.getDouble("y");
+        double z = rs.getDouble("z");
+        float yaw = rs.getFloat("yaw");
+        float pitch = rs.getFloat("pitch");
+        GameMode gameMode = GameMode.valueOf(rs.getString("game_mode"));
+        boolean allowFlight = rs.getInt("allow_flight") != 0;
+        boolean flying = rs.getInt("flying") != 0;
+        long startedAt = rs.getLong("started_at");
+
+        return new SpecSession(
+                moderatorId,
+                targetId,
+                worldName,
+                x,
+                y,
+                z,
+                yaw,
+                pitch,
+                gameMode,
+                allowFlight,
+                flying,
+                startedAt
+        );
+    }
+
+    private void migrateLegacySessions(Map<UUID, SpecSession> activeSessions) {
+        Map<UUID, SpecSession> legacySessions = loadLegacyYaml();
+
+        for (Map.Entry<UUID, SpecSession> entry : legacySessions.entrySet()) {
+            if (!activeSessions.containsKey(entry.getKey())) {
+                activeSessions.put(entry.getKey(), entry.getValue());
+            }
+        }
+
+        save(activeSessions.values());
+        markLegacyMigrationComplete();
+        plugin.getLogger().info("Migrated " + legacySessions.size() + " session(s) from sessions.yml to SQLite");
+    }
+
+    private Map<UUID, SpecSession> loadLegacyYaml() {
         Map<UUID, SpecSession> sessions = new HashMap<>();
         YamlConfiguration yaml = YamlConfiguration.loadConfiguration(legacyFile);
         ConfigurationSection root = yaml.getConfigurationSection("sessions");
+
         if (root == null) {
             return sessions;
         }
@@ -136,14 +237,14 @@ public final class SessionRepository {
                 UUID moderatorId = UUID.fromString(key);
                 sessions.put(moderatorId, new SpecSession(
                         moderatorId,
-                        UUID.fromString(requireString(yaml, path + "target")),
-                        requireString(yaml, path + "world"),
+                        UUID.fromString(requireYamlString(yaml, path + "target")),
+                        requireYamlString(yaml, path + "world"),
                         yaml.getDouble(path + "x"),
                         yaml.getDouble(path + "y"),
                         yaml.getDouble(path + "z"),
                         (float) yaml.getDouble(path + "yaw"),
                         (float) yaml.getDouble(path + "pitch"),
-                        GameMode.valueOf(requireString(yaml, path + "game-mode")),
+                        GameMode.valueOf(requireYamlString(yaml, path + "game-mode")),
                         yaml.getBoolean(path + "allow-flight"),
                         yaml.getBoolean(path + "flying"),
                         yaml.getLong(path + "started-at")
@@ -152,6 +253,7 @@ public final class SessionRepository {
                 plugin.getLogger().log(Level.WARNING, "Ignoring invalid legacy session '" + key + "'", exception);
             }
         }
+
         return sessions;
     }
 
@@ -168,7 +270,8 @@ public final class SessionRepository {
 
     private void markLegacyMigrationComplete() {
         String query = "INSERT OR REPLACE INTO metadata (key, value) VALUES ('legacy-yaml-migrated', '1')";
-        try (Connection connection = openConnection(); Statement statement = connection.createStatement()) {
+        try (Connection connection = openConnection();
+             Statement statement = connection.createStatement()) {
             statement.executeUpdate(query);
         } catch (SQLException exception) {
             throw new IllegalStateException("Could not save SQLite migration state", exception);
@@ -179,7 +282,7 @@ public final class SessionRepository {
         return DriverManager.getConnection("jdbc:sqlite:" + databaseFile.getAbsolutePath());
     }
 
-    private void bind(PreparedStatement statement, SpecSession session) throws SQLException {
+    private void bindSessionParameters(PreparedStatement statement, SpecSession session) throws SQLException {
         statement.setString(1, session.moderatorId().toString());
         statement.setString(2, session.targetId().toString());
         statement.setString(3, session.worldName());
@@ -194,7 +297,7 @@ public final class SessionRepository {
         statement.setLong(12, session.startedAt());
     }
 
-    private String requireString(YamlConfiguration yaml, String path) {
+    private String requireYamlString(YamlConfiguration yaml, String path) {
         String value = yaml.getString(path);
         if (value == null || value.trim().isEmpty()) {
             throw new IllegalArgumentException("Missing value at " + path);

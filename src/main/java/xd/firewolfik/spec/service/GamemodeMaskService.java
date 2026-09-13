@@ -12,17 +12,45 @@ import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import xd.firewolfik.spec.Main;
 
+/**
+ * Masks the spectator player's gamemode in the player tab list
+ * by sending synthetic packets so other players see them in SURVIVAL mode.
+ * <p>
+ * Caches reflection members on first use for zero runtime lookup overhead.
+ */
 public final class GamemodeMaskService {
+
     private static final String MODERN_PACKET_CLASS =
             "net.minecraft.network.protocol.game.ClientboundPlayerInfoUpdatePacket";
-    private static final String GAME_TYPE_CLASS = "net.minecraft.world.level.GameType";
+    private static final String MODERN_ACTION_CLASS =
+            "net.minecraft.network.protocol.game.ClientboundPlayerInfoUpdatePacket$Action";
+    private static final String GAME_TYPE_CLASS =
+            "net.minecraft.world.level.GameType";
 
     private final Main plugin;
     private final boolean modern;
     private final String nmsVersion;
-    private Object survivalGameType;
-    private Class<?> gameTypeClass;
     private boolean broken;
+
+    // Cached shared reflection
+    private Method getHandleMethod;
+    private Field connectionField;
+    private Method sendPacketMethod;
+
+    // Cached modern reflection
+    private Constructor<?> modernConstructor;
+    private Object modernUpdateGameModeAction;
+    private Field modernEntriesField;
+    private Class<?> gameTypeClass;
+    private Object survivalGameType;
+    private Method recordComponentsMethod;
+
+    // Cached legacy reflection
+    private Constructor<?> legacyPacketConstructor;
+    private Constructor<?> legacyDataConstructor;
+    private Object legacyUpdateGameModeAction;
+    private Method legacyAddDataMethod;
+    private Object legacySurvivalGameType;
 
     public GamemodeMaskService(Main plugin) {
         this.plugin = plugin;
@@ -43,9 +71,10 @@ public final class GamemodeMaskService {
         if (viewer.getUniqueId().equals(moderator.getUniqueId())) {
             return;
         }
+
         try {
-            Object packet = modern ? createModernPacket(moderator) : createLegacyPacket(moderator);
-            send(viewer, packet);
+            Object packet = modern ? buildModernPacket(moderator) : buildLegacyPacket(moderator);
+            sendPacket(viewer, packet);
         } catch (Throwable throwable) {
             broken = true;
             plugin.getLogger().warning(
@@ -59,7 +88,7 @@ public final class GamemodeMaskService {
         try {
             Class.forName(MODERN_PACKET_CLASS);
             return true;
-        } catch (ClassNotFoundException exception) {
+        } catch (ClassNotFoundException ignored) {
             return false;
         }
     }
@@ -72,51 +101,112 @@ public final class GamemodeMaskService {
         return "";
     }
 
-    private Object createModernPacket(Player moderator) throws Exception {
-        Class<?> packetClass = Class.forName(MODERN_PACKET_CLASS);
-        Class<?> actionClass = Class.forName(MODERN_PACKET_CLASS + "$Action");
-        Object updateGameMode = actionClass.getField("UPDATE_GAME_MODE").get(null);
+    // ==========================================
+    // Modern Packet Construction (1.19.3+)
+    // ==========================================
+
+    private Object buildModernPacket(Player moderator) throws Exception {
+        ensureModernInitialized();
+
         Object handle = getHandle(moderator);
-
-        Constructor<?> constructor = packetClass.getDeclaredConstructor(EnumSet.class, Collection.class);
         @SuppressWarnings({"unchecked", "rawtypes"})
-        Object actions = EnumSet.of((Enum) updateGameMode);
-        Object packet = constructor.newInstance(actions, Collections.singletonList(handle));
+        Object actions = EnumSet.of((Enum) modernUpdateGameModeAction);
+        Object packet = modernConstructor.newInstance(actions, Collections.singletonList(handle));
 
-        Field entriesField = packetClass.getDeclaredField("entries");
-        entriesField.setAccessible(true);
-        List<Object> entries = new ArrayList<Object>((List<?>) entriesField.get(packet));
-        entries.replaceAll(this::withSurvival);
-        entriesField.set(packet, entries);
+        List<Object> entries = new ArrayList<>((List<?>) modernEntriesField.get(packet));
+        entries.replaceAll(this::rewriteRecordToSurvival);
+        modernEntriesField.set(packet, entries);
+
         return packet;
     }
 
-    private Object createLegacyPacket(Player moderator) throws Exception {
+    private void ensureModernInitialized() throws Exception {
+        if (modernConstructor != null) {
+            return;
+        }
+
+        Class<?> packetClass = Class.forName(MODERN_PACKET_CLASS);
+        Class<?> actionClass = Class.forName(MODERN_ACTION_CLASS);
+        modernUpdateGameModeAction = actionClass.getField("UPDATE_GAME_MODE").get(null);
+        modernConstructor = packetClass.getDeclaredConstructor(EnumSet.class, Collection.class);
+
+        modernEntriesField = packetClass.getDeclaredField("entries");
+        modernEntriesField.setAccessible(true);
+
+        gameTypeClass = Class.forName(GAME_TYPE_CLASS);
+        survivalGameType = gameTypeClass.getField("SURVIVAL").get(null);
+        recordComponentsMethod = Class.class.getMethod("getRecordComponents");
+    }
+
+    private Object rewriteRecordToSurvival(Object record) {
+        try {
+            Object[] components = (Object[]) recordComponentsMethod.invoke(record.getClass());
+            Class<?>[] types = new Class<?>[components.length];
+            Object[] values = new Object[components.length];
+
+            for (int i = 0; i < components.length; i++) {
+                types[i] = (Class<?>) components[i].getClass().getMethod("getType").invoke(components[i]);
+                Method accessor = (Method) components[i].getClass().getMethod("getAccessor").invoke(components[i]);
+                values[i] = accessor.invoke(record);
+
+                if (types[i] == gameTypeClass) {
+                    values[i] = survivalGameType;
+                }
+            }
+
+            Constructor<?> canonical = record.getClass().getDeclaredConstructor(types);
+            return canonical.newInstance(values);
+        } catch (Throwable throwable) {
+            throw new IllegalStateException("Failed to rewrite modern player info record", throwable);
+        }
+    }
+
+    // ==========================================
+    // Legacy Packet Construction (1.16.5 and older)
+    // ==========================================
+
+    private Object buildLegacyPacket(Player moderator) throws Exception {
+        ensureLegacyInitialized();
+
+        Object handle = getHandle(moderator);
+        Object profile = handle.getClass().getMethod("getProfile").invoke(handle);
+        Object data = legacyDataConstructor.newInstance(profile, 0, legacySurvivalGameType, null);
+
+        Object packet = legacyPacketConstructor.newInstance(legacyUpdateGameModeAction, Collections.emptyList());
+        legacyAddDataMethod.invoke(packet, data);
+
+        return packet;
+    }
+
+    private void ensureLegacyInitialized() throws Exception {
+        if (legacyPacketConstructor != null) {
+            return;
+        }
+
         String base = "net.minecraft.server." + nmsVersion + '.';
         Class<?> packetClass = Class.forName(base + "PacketPlayOutPlayerInfo");
         Class<?> dataClass = Class.forName(base + "PacketPlayOutPlayerInfo$PlayerInfoData");
         Class<?> actionClass = Class.forName(base + "PacketPlayOutPlayerInfo$EnumPlayerInfoAction");
-        Object updateGameMode = actionClass.getField("UPDATE_GAME_MODE").get(null);
 
-        Object handle = getHandle(moderator);
-        Object profile = handle.getClass().getMethod("getProfile").invoke(handle);
+        legacyUpdateGameModeAction = actionClass.getField("UPDATE_GAME_MODE").get(null);
+        legacyDataConstructor = findLegacyDataConstructor(dataClass);
 
-        Constructor<?> dataConstructor = findLegacyDataConstructor(dataClass);
-        Class<?> legacyGameTypeClass = dataConstructor.getParameterTypes()[2];
-        Object survival = legacyGameTypeClass.getField("SURVIVAL").get(null);
-        Object data = dataConstructor.newInstance(profile, 0, survival, null);
+        Class<?> legacyGameTypeClass = legacyDataConstructor.getParameterTypes()[2];
+        legacySurvivalGameType = legacyGameTypeClass.getField("SURVIVAL").get(null);
 
-        Constructor<?> packetConstructor = packetClass.getConstructor(actionClass, Iterable.class);
-        Object packet = packetConstructor.newInstance(updateGameMode, Collections.emptyList());
+        legacyPacketConstructor = packetClass.getConstructor(actionClass, Iterable.class);
 
         for (Method method : packetClass.getMethods()) {
-            Class<?>[] parameters = method.getParameterTypes();
-            if (parameters.length == 1 && parameters[0] == dataClass) {
-                method.invoke(packet, data);
-                return packet;
+            Class<?>[] params = method.getParameterTypes();
+            if (params.length == 1 && params[0] == dataClass) {
+                legacyAddDataMethod = method;
+                break;
             }
         }
-        throw new IllegalStateException("Cannot attach PlayerInfoData to PacketPlayOutPlayerInfo");
+
+        if (legacyAddDataMethod == null) {
+            throw new IllegalStateException("Could not find data injection method in PacketPlayOutPlayerInfo");
+        }
     }
 
     private static Constructor<?> findLegacyDataConstructor(Class<?> dataClass) {
@@ -132,70 +222,50 @@ public final class GamemodeMaskService {
         throw new IllegalStateException("PlayerInfoData canonical constructor not found");
     }
 
-    private Object withSurvival(Object entry) {
-        try {
-            return replaceRecordComponent(entry, resolveGameTypeClass(), resolveSurvival());
-        } catch (Throwable throwable) {
-            throw new IllegalStateException("Cannot rewrite tab entry gamemode", throwable);
+    // ==========================================
+    // Network Dispatch Helpers
+    // ==========================================
+
+    private void sendPacket(Player viewer, Object packet) throws Exception {
+        Object handle = getHandle(viewer);
+        Object connection = resolveConnection(handle);
+
+        if (sendPacketMethod == null) {
+            sendPacketMethod = findSendMethod(connection.getClass(), packet.getClass());
+            sendPacketMethod.setAccessible(true);
         }
+
+        sendPacketMethod.invoke(connection, packet);
     }
 
-    private Class<?> resolveGameTypeClass() throws ClassNotFoundException {
-        if (gameTypeClass == null) {
-            gameTypeClass = Class.forName(GAME_TYPE_CLASS);
-        }
-        return gameTypeClass;
-    }
-
-    private Object resolveSurvival() throws Exception {
-        if (survivalGameType == null) {
-            survivalGameType = resolveGameTypeClass().getField("SURVIVAL").get(null);
-        }
-        return survivalGameType;
-    }
-
-    private static Object replaceRecordComponent(Object record, Class<?> targetType, Object replacement)
-            throws Exception {
-        Method componentsAccessor = Class.class.getMethod("getRecordComponents");
-        Object[] components = (Object[]) componentsAccessor.invoke(record.getClass());
-        Class<?>[] types = new Class<?>[components.length];
-        Object[] values = new Object[components.length];
-        for (int i = 0; i < components.length; i++) {
-            types[i] = (Class<?>) components[i].getClass().getMethod("getType").invoke(components[i]);
-            Method accessor = (Method) components[i].getClass().getMethod("getAccessor").invoke(components[i]);
-            values[i] = accessor.invoke(record);
-            if (types[i] == targetType) {
-                values[i] = replacement;
+    private Object resolveConnection(Object handle) throws Exception {
+        if (connectionField == null) {
+            try {
+                connectionField = handle.getClass().getField("connection");
+            } catch (NoSuchFieldException ignored) {
+                connectionField = handle.getClass().getField("playerConnection");
             }
         }
-        Constructor<?> canonical = record.getClass().getDeclaredConstructor(types);
-        return canonical.newInstance(values);
+        return connectionField.get(handle);
     }
 
-    private static void send(Player viewer, Object packet) throws Exception {
-        Object handle = getHandle(viewer);
-        Object connection;
-        try {
-            connection = handle.getClass().getField("connection").get(handle);
-        } catch (NoSuchFieldException ignored) {
-            connection = handle.getClass().getField("playerConnection").get(handle);
-        }
-        String packetClassName = packet.getClass().getName();
-        for (Method method : connection.getClass().getMethods()) {
+    private static Method findSendMethod(Class<?> connectionClass, Class<?> packetClass) {
+        for (Method method : connectionClass.getMethods()) {
             String name = method.getName();
             Class<?>[] parameters = method.getParameterTypes();
             if ((name.equals("send") || name.equals("sendPacket"))
                     && parameters.length == 1
-                    && parameters[0].isAssignableFrom(packet.getClass())) {
-                method.setAccessible(true);
-                method.invoke(connection, packet);
-                return;
+                    && parameters[0].isAssignableFrom(packetClass)) {
+                return method;
             }
         }
-        throw new IllegalStateException("No send method found on connection for " + packetClassName);
+        throw new IllegalStateException("No sendPacket method found on " + connectionClass.getName());
     }
 
-    private static Object getHandle(Player player) throws Exception {
-        return player.getClass().getMethod("getHandle").invoke(player);
+    private Object getHandle(Player player) throws Exception {
+        if (getHandleMethod == null) {
+            getHandleMethod = player.getClass().getMethod("getHandle");
+        }
+        return getHandleMethod.invoke(player);
     }
 }

@@ -3,8 +3,14 @@ package xd.firewolfik.spec.model;
 import java.util.UUID;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
+import org.bukkit.entity.Player;
 
+/**
+ * Immutable data snapshot representing a moderator's active spectating session,
+ * including their pre-spectate location and movement state.
+ */
 public final class SpecSession {
+
     private final UUID moderatorId;
     private final UUID targetId;
     private final String worldName;
@@ -46,19 +52,7 @@ public final class SpecSession {
         this.startedAt = startedAt;
     }
 
-    public UUID moderatorId() { return moderatorId; }
-    public UUID targetId() { return targetId; }
-    public String worldName() { return worldName; }
-    public double x() { return x; }
-    public double y() { return y; }
-    public double z() { return z; }
-    public float yaw() { return yaw; }
-    public float pitch() { return pitch; }
-    public GameMode gameMode() { return gameMode; }
-    public boolean allowFlight() { return allowFlight; }
-    public boolean flying() { return flying; }
-    public long startedAt() { return startedAt; }
-    public static SpecSession capture(UUID targetId, org.bukkit.entity.Player moderator) {
+    public static SpecSession capture(UUID targetId, Player moderator) {
         Location location = moderator.getLocation();
         return new SpecSession(
                 moderator.getUniqueId(),
@@ -91,5 +85,53 @@ public final class SpecSession {
                 flying,
                 System.currentTimeMillis()
         );
+    }
+
+    public UUID moderatorId() {
+        return moderatorId;
+    }
+
+    public UUID targetId() {
+        return targetId;
+    }
+
+    public String worldName() {
+        return worldName;
+    }
+
+    public double x() {
+        return x;
+    }
+
+    public double y() {
+        return y;
+    }
+
+    public double z() {
+        return z;
+    }
+
+    public float yaw() {
+        return yaw;
+    }
+
+    public float pitch() {
+        return pitch;
+    }
+
+    public GameMode gameMode() {
+        return gameMode;
+    }
+
+    public boolean allowFlight() {
+        return allowFlight;
+    }
+
+    public boolean flying() {
+        return flying;
+    }
+
+    public long startedAt() {
+        return startedAt;
     }
 }

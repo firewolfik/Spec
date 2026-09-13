@@ -1,17 +1,24 @@
 package xd.firewolfik.spec.service;
 
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import org.bukkit.Sound;
 import org.bukkit.entity.Player;
 import xd.firewolfik.spec.Main;
 import xd.firewolfik.spec.config.ConfigService;
 
+/**
+ * Handles playing configured action sounds to players with cached lookups and graceful fallbacks.
+ */
 public final class SoundService {
+
     private final Main plugin;
     private final ConfigService config;
-    private final Set<String> invalidSounds = new HashSet<>();
+    private final Map<String, SoundEffect> soundCache = new HashMap<>();
+    private final Set<String> warnedUnknownSounds = new HashSet<>();
 
     public SoundService(Main plugin, ConfigService config) {
         this.plugin = plugin;
@@ -19,29 +26,59 @@ public final class SoundService {
     }
 
     public void play(Player player, String action) {
-        if (!config.getBoolean("sounds.enabled", true)) {
+        if (!config.getBoolean("sounds.enabled", true) || player == null || !player.isOnline()) {
             return;
         }
 
-        String path = "sounds." + action + '.';
-        String name = config.getString(path + "name").trim().toUpperCase(Locale.ROOT);
-        if (name.isEmpty()) {
-            return;
+        SoundEffect effect = soundCache.get(action);
+        if (effect == null && !soundCache.containsKey(action)) {
+            effect = loadSoundEffect(action);
+            soundCache.put(action, effect);
         }
 
-        try {
-            Sound sound = Sound.valueOf(name);
-            float volume = (float) config.getDouble(path + "volume", 1.0);
-            float pitch = (float) config.getDouble(path + "pitch", 1.0);
-            player.playSound(player.getLocation(), sound, volume, pitch);
-        } catch (IllegalArgumentException exception) {
-            if (invalidSounds.add(name)) {
-                plugin.getLogger().warning("Unknown sound '" + name + "' at " + path + "name");
-            }
+        if (effect != null) {
+            effect.playTo(player);
         }
     }
 
     public void reload() {
-        invalidSounds.clear();
+        soundCache.clear();
+        warnedUnknownSounds.clear();
+    }
+
+    private SoundEffect loadSoundEffect(String action) {
+        String pathPrefix = "sounds." + action + '.';
+        String soundName = config.getString(pathPrefix + "name").trim().toUpperCase(Locale.ROOT);
+        if (soundName.isEmpty()) {
+            return null;
+        }
+
+        try {
+            Sound sound = Sound.valueOf(soundName);
+            float volume = (float) config.getDouble(pathPrefix + "volume", 1.0);
+            float pitch = (float) config.getDouble(pathPrefix + "pitch", 1.0);
+            return new SoundEffect(sound, volume, pitch);
+        } catch (IllegalArgumentException exception) {
+            if (warnedUnknownSounds.add(soundName)) {
+                plugin.getLogger().warning("Unknown sound '" + soundName + "' configured at " + pathPrefix + "name");
+            }
+            return null;
+        }
+    }
+
+    private static final class SoundEffect {
+        private final Sound sound;
+        private final float volume;
+        private final float pitch;
+
+        SoundEffect(Sound sound, float volume, float pitch) {
+            this.sound = sound;
+            this.volume = volume;
+            this.pitch = pitch;
+        }
+
+        void playTo(Player player) {
+            player.playSound(player.getLocation(), sound, volume, pitch);
+        }
     }
 }

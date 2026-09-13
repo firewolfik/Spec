@@ -1,7 +1,6 @@
 package xd.firewolfik.spec.service;
 
-import java.util.ArrayList;
-import java.util.Collections;
+import java.util.UUID;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.entity.Player;
@@ -9,7 +8,12 @@ import xd.firewolfik.spec.manager.SpecSessionManager;
 import xd.firewolfik.spec.message.MessageService;
 import xd.firewolfik.spec.model.SpecSession;
 
+/**
+ * High-level coordinator orchestrating spectator sessions:
+ * starting spectating, switching targets, restoring player states, and clean shutdown.
+ */
 public final class SpectatorService {
+
     private final SpecSessionManager sessions;
     private final PlayerStateService playerState;
     private final VisibilityService visibility;
@@ -34,27 +38,38 @@ public final class SpectatorService {
     }
 
     public SpectatorResult observe(Player moderator, Player target) {
-        SpecSession current = sessions.get(moderator.getUniqueId());
-        if (current != null) {
-            if (!moderator.teleport(target.getLocation())) {
-                return SpectatorResult.TELEPORT_FAILED;
-            }
-            if (current.targetId().equals(target.getUniqueId())) {
-                sounds.play(moderator, "teleport");
-                return SpectatorResult.RETELEPORTED;
-            }
-
-            sessions.put(current.withTarget(target.getUniqueId()));
-            sounds.play(moderator, "teleport");
-            return SpectatorResult.SWITCHED;
+        SpecSession currentSession = sessions.get(moderator.getUniqueId());
+        if (currentSession != null) {
+            return switchOrReteleport(moderator, target, currentSession);
         }
 
-        SpecSession created = SpecSession.capture(target.getUniqueId(), moderator);
-        sessions.put(created);
+        return startSpectating(moderator, target);
+    }
+
+    private SpectatorResult switchOrReteleport(Player moderator, Player target, SpecSession currentSession) {
+        if (!moderator.teleport(target.getLocation())) {
+            return SpectatorResult.TELEPORT_FAILED;
+        }
+
+        sounds.play(moderator, "teleport");
+
+        if (currentSession.targetId().equals(target.getUniqueId())) {
+            return SpectatorResult.RETELEPORTED;
+        }
+
+        sessions.put(currentSession.withTarget(target.getUniqueId()));
+        return SpectatorResult.SWITCHED;
+    }
+
+    private SpectatorResult startSpectating(Player moderator, Player target) {
+        SpecSession newSession = SpecSession.capture(target.getUniqueId(), moderator);
+        sessions.put(newSession);
+
         moderator.setFireTicks(0);
         moderator.setGameMode(GameMode.SPECTATOR);
+
         if (!moderator.teleport(target.getLocation())) {
-            playerState.restore(moderator, created);
+            playerState.restore(moderator, newSession);
             sessions.remove(moderator.getUniqueId());
             actionBar.refresh();
             return SpectatorResult.TELEPORT_FAILED;
@@ -66,11 +81,21 @@ public final class SpectatorService {
         return SpectatorResult.STARTED;
     }
 
-    public boolean stop(Player moderator, boolean sendMessage) {
-        return stop(moderator, sendMessage, true);
+    public UUID getCurrentTarget(UUID moderatorId) {
+        SpecSession session = sessions.get(moderatorId);
+        return session != null ? session.targetId() : null;
     }
 
-    private boolean stop(Player moderator, boolean sendMessage, boolean refreshActionBar) {
+    public boolean isSpectatingTarget(UUID moderatorId, UUID targetId) {
+        SpecSession session = sessions.get(moderatorId);
+        return session != null && session.targetId().equals(targetId);
+    }
+
+    public boolean stop(Player moderator, boolean notifyPlayer) {
+        return stopSession(moderator, notifyPlayer, true);
+    }
+
+    private boolean stopSession(Player moderator, boolean notifyPlayer, boolean refreshActionBar) {
         SpecSession session = sessions.get(moderator.getUniqueId());
         if (session == null) {
             return false;
@@ -79,13 +104,16 @@ public final class SpectatorService {
         playerState.restore(moderator, session);
         visibility.showModerator(moderator);
         sessions.remove(moderator.getUniqueId());
+
         if (refreshActionBar) {
             actionBar.refresh();
         }
-        if (sendMessage) {
+
+        if (notifyPlayer) {
             messages.send(moderator, "messages.spec-stopped");
             sounds.play(moderator, "stop");
         }
+
         return true;
     }
 
@@ -96,25 +124,31 @@ public final class SpectatorService {
     }
 
     public void notifyTargetQuit(Player target) {
+        UUID targetId = target.getUniqueId();
+        String targetName = target.getName();
+
         for (SpecSession session : sessions.getAll()) {
-            if (!session.targetId().equals(target.getUniqueId())) {
+            if (!session.targetId().equals(targetId)) {
                 continue;
             }
+
             Player moderator = Bukkit.getPlayer(session.moderatorId());
             if (moderator != null && moderator.isOnline()) {
-                messages.send(moderator, "messages.target-left", Collections.singletonMap("player", target.getName()));
+                messages.send(moderator, "messages.target-left", "player", targetName);
             }
         }
     }
 
     public void shutdown() {
         actionBar.stop();
-        for (SpecSession session : new ArrayList<>(sessions.getAll())) {
+
+        for (SpecSession session : sessions.getAll()) {
             Player moderator = Bukkit.getPlayer(session.moderatorId());
             if (moderator != null && moderator.isOnline()) {
-                stop(moderator, false, false);
+                stopSession(moderator, false, false);
             }
         }
+
         sessions.save();
     }
 }

@@ -10,10 +10,15 @@ import xd.firewolfik.spec.config.ConfigService;
 import xd.firewolfik.spec.manager.SpecSessionManager;
 import xd.firewolfik.spec.model.SpecSession;
 
+/**
+ * Periodically sends a configurable action bar message to all active spectator moderators.
+ */
 public final class ActionBarService {
+
     private final Main plugin;
     private final ConfigService config;
     private final SpecSessionManager sessions;
+
     private BukkitTask task;
 
     public ActionBarService(Main plugin, ConfigService config, SpecSessionManager sessions) {
@@ -27,8 +32,9 @@ public final class ActionBarService {
             stop();
             return;
         }
+
         if (task == null) {
-            task = Bukkit.getScheduler().runTaskTimer(plugin, this::send, 0L, 20L);
+            task = Bukkit.getScheduler().runTaskTimer(plugin, this::sendToAllModerators, 0L, 20L);
         }
     }
 
@@ -39,17 +45,20 @@ public final class ActionBarService {
         }
     }
 
-    private void send() {
+    private void sendToAllModerators() {
         if (!config.isActionBarEnabled()) {
             stop();
             return;
         }
+
+        String formattedMessage = config.getActionBar();
+
         for (SpecSession session : sessions.getAll()) {
             Player moderator = Bukkit.getPlayer(session.moderatorId());
             if (moderator != null && moderator.isOnline()) {
                 moderator.spigot().sendMessage(
                         ChatMessageType.ACTION_BAR,
-                        TextComponent.fromLegacyText(config.getActionBar())
+                        TextComponent.fromLegacyText(formattedMessage)
                 );
             }
         }

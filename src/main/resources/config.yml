@@ -6,11 +6,34 @@ prefix: "&eSpec &8» "
 #   SILENT - модератор остаётся в табе как обычный игрок в выживании (гм0):
 #            без серого выделения и без сортировки в конец списка
 visibility:
-  mode: VANISH
+  mode: SILENT
 
 action-bar:
   enabled: true
   message: "&6⚡ &fВы находитесь в режиме &eневидимости&f."
+
+# Запросы на слежку: когда игрок пишет в чат сообщение с ключевыми словами,
+# создается запрос на наблюдение и отправляется персоналу со специальным правом.
+requests:
+  enabled: true
+  cooldown: 10 # Задержка в секундах между созданием запросов от одного игрока
+  expire: 180   # Время жизни запроса в секундах
+  keywords:
+    - "спек"
+    - "spec"
+    - "spek"
+  # Сообщение, отправляемое модераторам в чат.
+  # Тег %button% заменяется интерактивной кнопкой.
+  message:
+    - ""
+    - "&#F2C6DE⚡ &fПоступил запрос на слежку"
+    - "  &fОт Игрока &#F2C6DE%player%"
+    - "  %button%"
+    - ""
+  button:
+    text: "&#F2C6DE(Проследить)"
+    hover: "&#F2C6DEТык"
+    command: "/spec %player%"
 
 # Названия звуков должны существовать в вашей версии Minecraft.
 sounds:
@@ -35,11 +58,16 @@ sounds:
     name: ENTITY_EXPERIENCE_ORB_PICKUP
     volume: 0.2
     pitch: 1.0
+  request:
+    name: BLOCK_AMYTHYST_BLOCK_PLACE
+    volume: 1.5
+    pitch: 1.0
 
+# Сообщения плагина (поддерживаются как одиночные строки, так и списки из нескольких строк):
 messages:
   no-permission: "&c☠ &fУ вас нет прав"
-  player-only: "бля иди нахуй"
-  usage: "&eℹ &fИспользуйте: /spec (игрок)"
+  player-only: "&c☠ &fЭта команда доступна только игрокам"
+  usage: "&e● &fИспользуйте &e/spec (игрок/alerts)"
   player-not-found: "&c☠ &fИгрок не найден"
   cannot-spec-yourself: "&c☠ &fНельзя наблюдать за самим собой"
   already-spectating: "&c✘ &fВы уже находитесь в режиме наблюдения"
@@ -51,3 +79,9 @@ messages:
   restored-after-restart: "&e⚡ &fСлежка завершена, из-за &eрестарта"
   reload-success: "&e⭐ &fКонфигурация перезагружена"
   reload-error: "&c☠ &fНе удалось перезагрузить конфигурацию"
+  request-created: "&#F2C6DE⚡ &fЖалоба отправлена"
+  alerts-enabled: "&e🔔 &fОповещения о запросах на слежку &aвключены"
+  alerts-disabled: "&e🔔 &fОповещения о запросах на слежку &cвыключены"
+  no-active-request:
+    - "&c☠ &fВы можете наблюдать только за игроками"
+    - "   &fКоторые запросили слежку."

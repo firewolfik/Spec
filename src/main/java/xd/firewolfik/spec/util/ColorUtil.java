@@ -4,8 +4,12 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.bukkit.ChatColor;
 
+/**
+ * Utility for parsing legacy Bukkit color codes (&a) and modern hex colors (&#RRGGBB).
+ */
 public final class ColorUtil {
-    private static final Pattern HEX_COLOR = Pattern.compile("&#([A-Fa-f0-9]{6})");
+
+    private static final Pattern HEX_COLOR_PATTERN = Pattern.compile("&#([A-Fa-f0-9]{6})");
 
     private ColorUtil() {
     }
@@ -15,17 +19,19 @@ public final class ColorUtil {
             return "";
         }
 
-        Matcher matcher = HEX_COLOR.matcher(text);
-        StringBuffer result = new StringBuffer();
+        Matcher matcher = HEX_COLOR_PATTERN.matcher(text);
+        StringBuffer buffer = new StringBuffer();
+
         while (matcher.find()) {
             String hex = matcher.group(1);
-            StringBuilder replacement = new StringBuilder("&x");
-            for (char character : hex.toCharArray()) {
-                replacement.append('&').append(character);
+            StringBuilder bungeecordHex = new StringBuilder("&x");
+            for (char ch : hex.toCharArray()) {
+                bungeecordHex.append('&').append(ch);
             }
-            matcher.appendReplacement(result, replacement.toString());
+            matcher.appendReplacement(buffer, bungeecordHex.toString());
         }
-        matcher.appendTail(result);
-        return ChatColor.translateAlternateColorCodes('&', result.toString());
+        matcher.appendTail(buffer);
+
+        return ChatColor.translateAlternateColorCodes('&', buffer.toString());
     }
 }
