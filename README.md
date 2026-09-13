@@ -1,4 +1,4 @@
-# 👁️ Spec
+# ⭐ Spec - плагин на слежку с сервера FunTime
 
 <div align="center">
 
