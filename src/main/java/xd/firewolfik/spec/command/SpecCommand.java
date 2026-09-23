@@ -14,13 +14,6 @@ import xd.firewolfik.spec.service.SpecRequestService;
 import xd.firewolfik.spec.service.SpectatorResult;
 import xd.firewolfik.spec.service.SpectatorService;
 
-/**
- * Handles the /spec command:
- * - /spec <player>: Begin spectating or switch target (restricted to active requests unless moderator has spec.any)
- * - /spec: Stop spectating
- * - /spec alerts [on|off|toggle|status]: Toggle or set request alert notifications with persistence
- * - /spec reload: Reload configuration and active sessions
- */
 public final class SpecCommand implements CommandExecutor {
 
     private final Main plugin;

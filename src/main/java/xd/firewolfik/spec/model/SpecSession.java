@@ -5,10 +5,6 @@ import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
 
-/**
- * Immutable data snapshot representing a moderator's active spectating session,
- * including their pre-spectate location and movement state.
- */
 public final class SpecSession {
 
     private final UUID moderatorId;

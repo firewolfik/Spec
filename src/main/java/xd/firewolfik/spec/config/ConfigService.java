@@ -8,9 +8,6 @@ import xd.firewolfik.spec.Main;
 import xd.firewolfik.spec.service.VisibilityMode;
 import xd.firewolfik.spec.util.ColorUtil;
 
-/**
- * Accessor service for configuration values stored in config.yml.
- */
 public final class ConfigService {
 
     private final Main plugin;

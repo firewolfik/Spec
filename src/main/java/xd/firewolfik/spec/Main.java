@@ -15,6 +15,7 @@ import xd.firewolfik.spec.message.MessageService;
 import xd.firewolfik.spec.repository.SessionRepository;
 import xd.firewolfik.spec.service.ActionBarService;
 import xd.firewolfik.spec.service.GamemodeMaskService;
+import xd.firewolfik.spec.service.PermissionTrackerService;
 import xd.firewolfik.spec.service.PlayerStateService;
 import xd.firewolfik.spec.service.SoundService;
 import xd.firewolfik.spec.service.SpecRequestService;
@@ -32,6 +33,7 @@ public final class Main extends JavaPlugin {
     private SpectatorService spectatorService;
     private SpecRequestService requestService;
     private SpecSessionManager sessionManager;
+    private PermissionTrackerService permissionTracker;
 
     @Override
     public void onEnable() {
@@ -42,10 +44,14 @@ public final class Main extends JavaPlugin {
         registerListeners();
 
         actionBarService.refresh();
+        permissionTracker.start();
     }
 
     @Override
     public void onDisable() {
+        if (permissionTracker != null) {
+            permissionTracker.stop();
+        }
         if (spectatorService != null) {
             spectatorService.shutdown();
         }
@@ -78,6 +84,7 @@ public final class Main extends JavaPlugin {
 
         actionBarService = new ActionBarService(this, configService, sessionManager);
         requestService = new SpecRequestService(configService, messageService, soundService, repository);
+        permissionTracker = new PermissionTrackerService(this, requestService);
 
         spectatorService = new SpectatorService(
                 sessionManager,
@@ -105,7 +112,7 @@ public final class Main extends JavaPlugin {
 
     private void registerListeners() {
         PluginManager pm = getServer().getPluginManager();
-        pm.registerEvents(new PlayerConnectionListener(this, sessionManager, spectatorService, visibilityService), this);
+        pm.registerEvents(new PlayerConnectionListener(this, sessionManager, spectatorService, visibilityService, permissionTracker), this);
         pm.registerEvents(new SpectatorProtectionListener(sessionManager), this);
         pm.registerEvents(new PlayerChatListener(this, requestService), this);
     }

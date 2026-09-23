@@ -8,10 +8,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import xd.firewolfik.spec.model.SpecSession;
 import xd.firewolfik.spec.repository.SessionRepository;
 
-/**
- * Thread-safe registry and lifecycle coordinator for active moderator spectator sessions.
- * Synchronizes modifications with {@link SessionRepository}.
- */
 public final class SpecSessionManager {
 
     private final SessionRepository repository;

@@ -9,9 +9,6 @@ import net.md_5.bungee.api.chat.ClickEvent;
 import net.md_5.bungee.api.chat.HoverEvent;
 import net.md_5.bungee.api.chat.TextComponent;
 
-/**
- * Utility for constructing interactive chat messages containing clickable/hoverable buttons.
- */
 public final class ChatComponentUtil {
 
     private static final String BUTTON_TOKEN = "%button%";
@@ -56,7 +53,6 @@ public final class ChatComponentUtil {
                 }
             }
 
-            // Insert button parts between string slices
             if (i < parts.length - 1) {
                 for (BaseComponent part : buttonParts) {
                     lineComponents.add(part.duplicate());

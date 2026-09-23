@@ -2,9 +2,6 @@ package xd.firewolfik.spec.model;
 
 import java.util.UUID;
 
-/**
- * Represents an active spectator request initiated by a player.
- */
 public final class SpecRequest {
 
     private final UUID requesterId;

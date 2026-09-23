@@ -13,10 +13,6 @@ import org.bukkit.event.entity.FoodLevelChangeEvent;
 import org.bukkit.event.player.PlayerVelocityEvent;
 import xd.firewolfik.spec.manager.SpecSessionManager;
 
-/**
- * Protects spectating moderators from accidental world interactions:
- * damage, mob targeting, fire, hunger, potion effects, and knockback velocity.
- */
 public final class SpectatorProtectionListener implements Listener {
 
     private final SpecSessionManager sessions;

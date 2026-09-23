@@ -7,10 +7,6 @@ import org.bukkit.entity.Player;
 import xd.firewolfik.spec.Main;
 import xd.firewolfik.spec.model.SpecSession;
 
-/**
- * Handles restoring player coordinates, gamemode, and flight capability
- * to their pre-spectator values upon exiting spectator mode.
- */
 public final class PlayerStateService {
 
     private final Main plugin;

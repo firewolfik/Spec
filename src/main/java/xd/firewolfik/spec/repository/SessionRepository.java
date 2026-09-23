@@ -9,9 +9,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 import java.util.logging.Level;
 import org.bukkit.GameMode;
@@ -20,10 +18,6 @@ import org.bukkit.configuration.file.YamlConfiguration;
 import xd.firewolfik.spec.Main;
 import xd.firewolfik.spec.model.SpecSession;
 
-/**
- * Manages persistent storage of active moderator spectator sessions and user settings.
- * Backed by SQLite (sessions.db) with automatic migration from legacy sessions.yml.
- */
 public final class SessionRepository {
 
     private static final String CREATE_SESSIONS_TABLE = ""
@@ -48,9 +42,10 @@ public final class SessionRepository {
             + "    value TEXT NOT NULL"
             + ")";
 
-    private static final String CREATE_DISABLED_ALERTS_TABLE = ""
-            + "CREATE TABLE IF NOT EXISTS disabled_alerts ("
-            + "    moderator_id TEXT PRIMARY KEY"
+    private static final String CREATE_ALERTS_TABLE = ""
+            + "CREATE TABLE IF NOT EXISTS alert_preferences ("
+            + "    moderator_id TEXT PRIMARY KEY,"
+            + "    enabled      INTEGER NOT NULL"
             + ")";
 
     private static final String SELECT_ALL_SESSIONS = ""
@@ -112,32 +107,32 @@ public final class SessionRepository {
         }
     }
 
-    public Set<UUID> loadDisabledAlerts() {
-        Set<UUID> set = new HashSet<>();
-        String query = "SELECT moderator_id FROM disabled_alerts";
+    public Map<UUID, Boolean> loadAlertPreferences() {
+        Map<UUID, Boolean> preferences = new HashMap<>();
+        String query = "SELECT moderator_id, enabled FROM alert_preferences";
         try (Connection connection = openConnection();
              Statement statement = connection.createStatement();
              ResultSet rs = statement.executeQuery(query)) {
             while (rs.next()) {
-                set.add(UUID.fromString(rs.getString("moderator_id")));
+                UUID uuid = UUID.fromString(rs.getString("moderator_id"));
+                boolean enabled = rs.getInt("enabled") != 0;
+                preferences.put(uuid, enabled);
             }
         } catch (SQLException | IllegalArgumentException exception) {
-            plugin.getLogger().log(Level.WARNING, "Could not load disabled alerts from SQLite", exception);
+            plugin.getLogger().log(Level.WARNING, "Could not load alert preferences from SQLite", exception);
         }
-        return set;
+        return preferences;
     }
 
-    public void setAlertsDisabled(UUID moderatorId, boolean disabled) {
-        String sql = disabled
-                ? "INSERT OR IGNORE INTO disabled_alerts (moderator_id) VALUES (?)"
-                : "DELETE FROM disabled_alerts WHERE moderator_id = ?";
-
+    public void saveAlertPreference(UUID moderatorId, boolean enabled) {
+        String sql = "INSERT OR REPLACE INTO alert_preferences (moderator_id, enabled) VALUES (?, ?)";
         try (Connection connection = openConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setString(1, moderatorId.toString());
+            statement.setInt(2, enabled ? 1 : 0);
             statement.executeUpdate();
         } catch (SQLException exception) {
-            plugin.getLogger().log(Level.WARNING, "Could not update alert preference for " + moderatorId, exception);
+            plugin.getLogger().log(Level.WARNING, "Could not save alert preference to SQLite for " + moderatorId, exception);
         }
     }
 
@@ -154,9 +149,16 @@ public final class SessionRepository {
              Statement statement = connection.createStatement()) {
             statement.executeUpdate(CREATE_SESSIONS_TABLE);
             statement.executeUpdate(CREATE_METADATA_TABLE);
-            statement.executeUpdate(CREATE_DISABLED_ALERTS_TABLE);
+            statement.executeUpdate(CREATE_ALERTS_TABLE);
+
+            statement.executeUpdate(""
+                    + "INSERT OR IGNORE INTO alert_preferences (moderator_id, enabled) "
+                    + "SELECT moderator_id, 0 FROM disabled_alerts WHERE 1=1"
+            );
         } catch (SQLException exception) {
-            throw new IllegalStateException("Could not initialize SQLite schema in sessions.db", exception);
+            if (!exception.getMessage().contains("disabled_alerts")) {
+                throw new IllegalStateException("Could not initialize SQLite schema in sessions.db", exception);
+            }
         }
     }
 

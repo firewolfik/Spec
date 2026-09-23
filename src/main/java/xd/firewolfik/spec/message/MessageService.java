@@ -8,10 +8,6 @@ import org.bukkit.command.CommandSender;
 import xd.firewolfik.spec.config.ConfigService;
 import xd.firewolfik.spec.util.ColorUtil;
 
-/**
- * Handles formatting and dispatching localized messages (supporting both single-line and multi-line)
- * from config to command senders.
- */
 public final class MessageService {
 
     private final ConfigService config;

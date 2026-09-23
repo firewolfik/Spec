@@ -9,10 +9,6 @@ import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 import xd.firewolfik.spec.Main;
 
-/**
- * Handles hiding and revealing players via EssentialsX Vanish integration,
- * or falling back to standard Bukkit player hiding if Essentials is absent.
- */
 public final class VanishService {
 
     private final Main plugin;

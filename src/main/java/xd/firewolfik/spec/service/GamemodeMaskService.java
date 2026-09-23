@@ -12,12 +12,6 @@ import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import xd.firewolfik.spec.Main;
 
-/**
- * Masks the spectator player's gamemode in the player tab list
- * by sending synthetic packets so other players see them in SURVIVAL mode.
- * <p>
- * Caches reflection members on first use for zero runtime lookup overhead.
- */
 public final class GamemodeMaskService {
 
     private static final String MODERN_PACKET_CLASS =
@@ -32,12 +26,10 @@ public final class GamemodeMaskService {
     private final String nmsVersion;
     private boolean broken;
 
-    // Cached shared reflection
     private Method getHandleMethod;
     private Field connectionField;
     private Method sendPacketMethod;
 
-    // Cached modern reflection
     private Constructor<?> modernConstructor;
     private Object modernUpdateGameModeAction;
     private Field modernEntriesField;
@@ -45,7 +37,6 @@ public final class GamemodeMaskService {
     private Object survivalGameType;
     private Method recordComponentsMethod;
 
-    // Cached legacy reflection
     private Constructor<?> legacyPacketConstructor;
     private Constructor<?> legacyDataConstructor;
     private Object legacyUpdateGameModeAction;
@@ -100,10 +91,6 @@ public final class GamemodeMaskService {
         }
         return "";
     }
-
-    // ==========================================
-    // Modern Packet Construction (1.19.3+)
-    // ==========================================
 
     private Object buildModernPacket(Player moderator) throws Exception {
         ensureModernInitialized();
@@ -161,10 +148,6 @@ public final class GamemodeMaskService {
         }
     }
 
-    // ==========================================
-    // Legacy Packet Construction (1.16.5 and older)
-    // ==========================================
-
     private Object buildLegacyPacket(Player moderator) throws Exception {
         ensureLegacyInitialized();
 
@@ -221,10 +204,6 @@ public final class GamemodeMaskService {
         }
         throw new IllegalStateException("PlayerInfoData canonical constructor not found");
     }
-
-    // ==========================================
-    // Network Dispatch Helpers
-    // ==========================================
 
     private void sendPacket(Player viewer, Object packet) throws Exception {
         Object handle = getHandle(viewer);

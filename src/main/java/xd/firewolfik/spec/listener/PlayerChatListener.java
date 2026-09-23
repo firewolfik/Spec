@@ -9,9 +9,6 @@ import org.bukkit.event.player.AsyncPlayerChatEvent;
 import xd.firewolfik.spec.Main;
 import xd.firewolfik.spec.service.SpecRequestService;
 
-/**
- * Listens for chat messages to detect keywords and trigger spectator requests.
- */
 public final class PlayerChatListener implements Listener {
 
     private final Main plugin;

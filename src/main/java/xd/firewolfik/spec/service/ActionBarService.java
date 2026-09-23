@@ -10,9 +10,6 @@ import xd.firewolfik.spec.config.ConfigService;
 import xd.firewolfik.spec.manager.SpecSessionManager;
 import xd.firewolfik.spec.model.SpecSession;
 
-/**
- * Periodically sends a configurable action bar message to all active spectator moderators.
- */
 public final class ActionBarService {
 
     private final Main plugin;

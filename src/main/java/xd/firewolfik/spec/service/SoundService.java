@@ -10,9 +10,6 @@ import org.bukkit.entity.Player;
 import xd.firewolfik.spec.Main;
 import xd.firewolfik.spec.config.ConfigService;
 
-/**
- * Handles playing configured action sounds to players with cached lookups and graceful fallbacks.
- */
 public final class SoundService {
 
     private final Main plugin;

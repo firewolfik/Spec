@@ -18,10 +18,6 @@ import xd.firewolfik.spec.model.SpecRequest;
 import xd.firewolfik.spec.repository.SessionRepository;
 import xd.firewolfik.spec.util.ChatComponentUtil;
 
-/**
- * Coordinates player spectator requests initiated via chat keywords,
- * dispatches interactive alert buttons to staff, and persists alert preferences in SQLite.
- */
 public final class SpecRequestService {
 
     private final ConfigService config;
@@ -49,7 +45,12 @@ public final class SpecRequestService {
 
     private void loadSavedAlertPreferences() {
         disabledAlerts.clear();
-        disabledAlerts.addAll(sessionRepository.loadDisabledAlerts());
+        Map<UUID, Boolean> preferences = sessionRepository.loadAlertPreferences();
+        for (Map.Entry<UUID, Boolean> entry : preferences.entrySet()) {
+            if (!entry.getValue()) {
+                disabledAlerts.add(entry.getKey());
+            }
+        }
     }
 
     public void reload() {
@@ -57,25 +58,32 @@ public final class SpecRequestService {
     }
 
     public boolean isAlertsEnabled(UUID moderatorId) {
+        if (!config.getBoolean("requests.enabled", true)) {
+            return false;
+        }
         return !disabledAlerts.contains(moderatorId);
     }
 
-    /**
-     * Toggles alerts for the moderator and persists the setting in the database.
-     *
-     * @return true if alerts are now enabled, false if disabled.
-     */
+    public void sendAlertStatus(Player player) {
+        boolean enabled = isAlertsEnabled(player.getUniqueId());
+        if (enabled) {
+            messages.send(player, "messages.login-alerts-enabled");
+        } else {
+            messages.send(player, "messages.login-alerts-disabled");
+        }
+    }
+
     public boolean toggleAlerts(Player moderator) {
         UUID id = moderator.getUniqueId();
-        boolean currentlyDisabled = disabledAlerts.contains(id);
-        boolean nowEnabled = currentlyDisabled;
+        boolean currentlyEnabled = isAlertsEnabled(id);
+        boolean nowEnabled = !currentlyEnabled;
 
         if (nowEnabled) {
             disabledAlerts.remove(id);
-            sessionRepository.setAlertsDisabled(id, false);
+            sessionRepository.saveAlertPreference(id, true);
         } else {
             disabledAlerts.add(id);
-            sessionRepository.setAlertsDisabled(id, true);
+            sessionRepository.saveAlertPreference(id, false);
         }
 
         return nowEnabled;

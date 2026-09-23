@@ -9,39 +9,39 @@ import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import xd.firewolfik.spec.Main;
 import xd.firewolfik.spec.manager.SpecSessionManager;
+import xd.firewolfik.spec.service.PermissionTrackerService;
 import xd.firewolfik.spec.service.SpectatorService;
 import xd.firewolfik.spec.service.VisibilityService;
 
-/**
- * Handles connection events to restore interrupted sessions and update tab-list masking.
- */
 public final class PlayerConnectionListener implements Listener {
 
     private final Main plugin;
     private final SpecSessionManager sessions;
     private final SpectatorService spectators;
     private final VisibilityService visibility;
+    private final PermissionTrackerService permissionTracker;
 
     public PlayerConnectionListener(
             Main plugin,
             SpecSessionManager sessions,
             SpectatorService spectators,
-            VisibilityService visibility
+            VisibilityService visibility,
+            PermissionTrackerService permissionTracker
     ) {
         this.plugin = plugin;
         this.sessions = sessions;
         this.spectators = spectators;
         this.visibility = visibility;
+        this.permissionTracker = permissionTracker;
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void onJoin(PlayerJoinEvent event) {
         final Player player = event.getPlayer();
 
-        // If joining in SILENT mode, mask any already spectating moderators in this player's tab
         visibility.applyForJoiningViewer(player);
+        permissionTracker.handleJoin(player);
 
-        // If this player was spectating before a server restart/crash, restore their pre-spectate state
         if (sessions.contains(player.getUniqueId())) {
             Bukkit.getScheduler().runTask(plugin, new Runnable() {
                 @Override
@@ -56,10 +56,8 @@ public final class PlayerConnectionListener implements Listener {
     public void onQuit(PlayerQuitEvent event) {
         Player player = event.getPlayer();
 
-        // Notify moderators if the player they were watching disconnected
+        permissionTracker.handleQuit(player);
         spectators.notifyTargetQuit(player);
-
-        // If the disconnecting player was spectating, stop and restore their session
         spectators.stop(player, true);
     }
 }

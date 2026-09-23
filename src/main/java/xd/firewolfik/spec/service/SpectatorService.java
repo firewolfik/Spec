@@ -1,5 +1,7 @@
 package xd.firewolfik.spec.service;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.UUID;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
@@ -8,10 +10,6 @@ import xd.firewolfik.spec.manager.SpecSessionManager;
 import xd.firewolfik.spec.message.MessageService;
 import xd.firewolfik.spec.model.SpecSession;
 
-/**
- * High-level coordinator orchestrating spectator sessions:
- * starting spectating, switching targets, restoring player states, and clean shutdown.
- */
 public final class SpectatorService {
 
     private final SpecSessionManager sessions;
@@ -142,7 +140,7 @@ public final class SpectatorService {
     public void shutdown() {
         actionBar.stop();
 
-        for (SpecSession session : sessions.getAll()) {
+        for (SpecSession session : new ArrayList<>(sessions.getAll())) {
             Player moderator = Bukkit.getPlayer(session.moderatorId());
             if (moderator != null && moderator.isOnline()) {
                 stopSession(moderator, false, false);

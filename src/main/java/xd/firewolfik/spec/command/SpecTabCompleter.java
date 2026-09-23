@@ -39,7 +39,6 @@ public final class SpecTabCompleter implements TabCompleter {
         String input = args[0];
         List<String> completions = new ArrayList<>();
 
-        // If the argument is empty (/spec <TAB>), only suggest subcommands without flooding player list
         if (input.isEmpty()) {
             completions.add("alerts");
             if (sender.hasPermission("spec.reload")) {
@@ -69,7 +68,6 @@ public final class SpecTabCompleter implements TabCompleter {
                 continue;
             }
 
-            // Players with spec.any can spec all players; others only active requesters or current target
             if (!canSpecAny && !activeRequesters.contains(player.getUniqueId())
                     && !player.getUniqueId().equals(currentTargetId)) {
                 continue;

@@ -4,9 +4,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.bukkit.ChatColor;
 
-/**
- * Utility for parsing legacy Bukkit color codes (&a) and modern hex colors (&#RRGGBB).
- */
 public final class ColorUtil {
 
     private static final Pattern HEX_COLOR_PATTERN = Pattern.compile("&#([A-Fa-f0-9]{6})");
