@@ -1,4 +1,4 @@
-# 👁️ Spec
+# Spec
 
 <div align="center">
 
