@@ -56,7 +56,7 @@
 
 ## 📞 Поддержка
 
-- **Telegram**: [тык](https://t.me/oooSwagParty)
+- **Telegram**: [тык](https://t.me/firewolfik)
 - **Issues**: [тык](https://github.com/firewolfik/Spec/issues)
 
 ---
