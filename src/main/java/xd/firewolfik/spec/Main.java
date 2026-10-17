@@ -113,7 +113,7 @@ public final class Main extends JavaPlugin {
     private void registerListeners() {
         PluginManager pm = getServer().getPluginManager();
         pm.registerEvents(new PlayerConnectionListener(this, sessionManager, spectatorService, visibilityService, permissionTracker), this);
-        pm.registerEvents(new SpectatorProtectionListener(sessionManager), this);
+        pm.registerEvents(new SpectatorProtectionListener(this, sessionManager), this);
         pm.registerEvents(new PlayerChatListener(this, requestService), this);
     }
 }

@@ -49,7 +49,7 @@ sounds:
     volume: 0.2
     pitch: 1.0
   request:
-    name: BLOCK_AMYTHYST_BLOCK_PLACE
+    name: BLOCK_AMETHYST_BLOCK_PLACE
     volume: 2.0
     pitch: 1.0
 
